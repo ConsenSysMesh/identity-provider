@@ -21,8 +21,11 @@
   },
   "dependencies": {
     "bignumber.js": "^2.3.0",
+    "bluebird": "^3.3.4",
+    "eth-lightwallet": "^2.2.5",
     "redux-tcomb": "^0.1.6",
     "web3": "^0.15.3",
+    "web3-provider-engine": "^7.1.1",
     "xmlhttprequest": "^1.8.0"
   }
 }
