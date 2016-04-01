@@ -32,11 +32,12 @@ export class IdentityWalletSubprovider extends HookedWalletSubprovider {
       },
 
       signTransaction(fullTxParams, callback) {
+        // TODO: Check fullTxParams.from against config.identities to see if
+        // a contract identity is being used, then handle it accordingly using
+        // the appropriate Signer from ConsenSys/eth-lightwallet#75.
         const keystoreString = JSON.stringify(config.keystore);
         const keystore = lightwallet.keystore.deserialize(keystoreString);
         keystore.passwordProvider = config.passwordProvider;
-        // TODO: Check fullTxParams.from against config.identities to see if
-        // a contract identity is being used, then handle it accordingly.
         keystore.signTransaction(fullTxParams, callback);
       },
     });
@@ -106,6 +107,11 @@ export class IdentityProvider extends ProviderEngine {
     this.addProvider(new IdentityWalletSubprovider(this.config));
     this.addProvider(new Web3Subprovider(
       new Web3.providers.HttpProvider(this.config.rpcUrl || DEFAULT_RPC_URL)));
+  }
+
+  static initialize(config) {
+    const provider = new IdentityProvider(config);
+    return provider.initializedPromise;
   }
 
   createContractIdentity(from) {

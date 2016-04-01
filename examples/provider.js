@@ -23,17 +23,22 @@ const seed = 'embark can decline fence confirm salute fence weird joy camp brown
 const providerPromise = deriveInsecureStoreKey()
   .then((storeKey) => {
     const keystore = new lightwallet.keystore(seed, storeKey);
-    return new identity.provider.IdentityProvider({
+    return identity.provider.IdentityProvider.initialize({
       keystore,
       identities: [],
       passwordProvider: (callback) => callback(null, 'identity-provider'),
-    }).initializedPromise;
+    });
   });
 
 providerPromise.then((provider) => {
   console.log(provider.config.identities);
+  provider.start();
   provider.createContractIdentity()
     .then(() => {
       console.log(provider.config.identities);
+    })
+    .catch((err) => {
+      throw err;
     });
+  provider.stop();
 });
