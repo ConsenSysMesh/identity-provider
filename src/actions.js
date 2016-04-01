@@ -21,7 +21,7 @@ export function deployProxyContract(config) {
  *
  * @return {Promise<SenderIdentity>}
  */
-export function createSenderIdentity(config) {
+export function createContractIdentity(config) {
   return deployProxyContract(config).then((contract) => {
     return identity.types.SenderIdentity({
       address: contract.address,

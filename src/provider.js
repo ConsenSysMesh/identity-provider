@@ -1,10 +1,14 @@
 import Promise from 'bluebird';
 import lightwallet from 'eth-lightwallet';
+import _ from 'lodash';
 import t from 'tcomb';
 import Web3 from 'web3';
 import ProviderEngine from 'web3-provider-engine';
 import HookedWalletSubprovider from 'web3-provider-engine/subproviders/hooked-wallet';
 import Web3Subprovider from 'web3-provider-engine/subproviders/web3';
+import * as actions from './actions';
+import * as configLib from './config';
+import * as types from './types';
 
 const DEFAULT_RPC_URL = 'http://localhost:8545';
 
@@ -31,6 +35,8 @@ export class IdentityWalletSubprovider extends HookedWalletSubprovider {
         const keystoreString = JSON.stringify(config.keystore);
         const keystore = lightwallet.keystore.deserialize(keystoreString);
         keystore.passwordProvider = config.passwordProvider;
+        // TODO: Check fullTxParams.from against config.identities to see if
+        // a contract identity is being used, then handle it accordingly.
         keystore.signTransaction(fullTxParams, callback);
       },
     });
@@ -53,19 +59,31 @@ function bestKeystorePath(keystore) {
   };
 }
 
+function deriveStoreKey(passwordProvider) {
+  return Promise.promisify(passwordProvider)()
+    .then(Promise.promisify(lightwallet.keystore.deriveKeyFromPassword));
+}
+
 /**
  * If the keystore has no addresses generated, generate one.
  */
-function ensureKeystoreHasAddress(keystore, passwordProvider): Promise {
+function ensureKeystoreHasAddress(keystore, storeKey) {
   const pathInfo = bestKeystorePath(keystore);
   if (pathInfo.addresses.length === 0) {
-    return Promise.promisify(passwordProvider)()
-      .then(Promise.promisify(lightwallet.keystore.deriveKeyFromPassword))
-      .then((storeKey) => {
-        keystore.generateNewAddress(storeKey, 1, pathInfo.hdPath);
-      });
+    keystore.generateNewAddress(storeKey, 1, pathInfo.hdPath);
   }
-  return Promise.resolve();
+}
+
+function mergeIdentitySources(identities, keystore) {
+  const knownAddresses = new Set(identities.map((id) => id.address));
+  const keystoreAddresses = keystore.ksData[keystore.defaultHdPathString].addresses.map((addr) => `0x${addr}`);
+  const missingIdentities = keystoreAddresses.reduce((found, address) => {
+    if (!knownAddresses.has(address)) {
+      found.push(types.Identity({address}));
+    }
+    return found;
+  }, []);
+  return identities.concat(missingIdentities);
 }
 
 /**
@@ -76,11 +94,38 @@ function ensureKeystoreHasAddress(keystore, passwordProvider): Promise {
 export class IdentityProvider extends ProviderEngine {
   constructor(config: IdentityProviderConfig) {
     super();
-    ensureKeystoreHasAddress(config.keystore, config.passwordProvider);
-    // TODO: Ensure that all keystore addresses from the best HD path are
-    // included in config.identities.
-    this.addProvider(new IdentityWalletSubprovider(config));
+    this.config = _.cloneDeep(config); // Clone the immutable config to allow mutation as a stopgap.
+
+    this.initializedPromise = deriveStoreKey(this.config.passwordProvider)
+      .then((storeKey) => {
+        ensureKeystoreHasAddress(this.config.keystore, storeKey);
+        this.config.identities = mergeIdentitySources(this.config.identities, this.config.keystore);
+      })
+      .then(() => this);
+
+    this.addProvider(new IdentityWalletSubprovider(this.config));
     this.addProvider(new Web3Subprovider(
-      new Web3.providers.HttpProvider(config.rpcUrl || DEFAULT_RPC_URL)));
+      new Web3.providers.HttpProvider(this.config.rpcUrl || DEFAULT_RPC_URL)));
+  }
+
+  createContractIdentity(from) {
+    let sender;
+    if (from == null) {
+      const keyIdentity = _.find(this.config.identities, (id) => !types.ContractIdentity.is(id));
+      sender = keyIdentity.address;
+    } else {
+      sender = from;
+    }
+
+    const txConfig = Object.assign({
+      account: sender,
+      web3: new Web3(this),
+    }, configLib.defaultConfig);
+    return actions.createContractIdentity(txConfig)
+      .then((newIdentity) => {
+        // Add the new identity to the beginning of the array to select it.
+        this.config.identities.unshift(newIdentity);
+        return newIdentity;
+      });
   }
 }

@@ -4,7 +4,7 @@ global.Promise = Promise;  // Use bluebird for better error logging during devel
 
 
 identity.config.initialize().then((config) => {
-  return identity.actions.createSenderIdentity(config)
+  return identity.actions.createContractIdentity(config)
     .then((id) => {
       console.log(id);
     });

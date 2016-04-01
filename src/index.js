@@ -1,6 +1,7 @@
 import * as actions from './actions';
 import * as config from './config';
 import * as contracts from './contracts';
+import * as provider from './provider';
 import * as types from './types';
 /*
 New identities are AccountIdentities with a freshly generated key. Those
@@ -19,4 +20,4 @@ Set balance
 
  */
 
-export default {actions, config, contracts, types};
+export default {actions, config, contracts, provider, types};

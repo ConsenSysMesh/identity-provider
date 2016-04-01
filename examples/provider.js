@@ -10,42 +10,30 @@ global.Promise = Promise;  // Use bluebird for better error logging during devel
  * 4. Set that identity as active in the provider.
  */
 
-function deriveStoreKey(password) {
-  return new Promise((resolve, reject) => {
-    lightwallet.keystore.deriveKeyFromPassword(password, (err, storeKey) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(storeKey);
-      }
-    });
-  });
-}
+
+const deriveStoreKey = Promise.promisify(lightwallet.keystore.deriveKeyFromPassword);
 
 function deriveInsecureStoreKey() {
   // Using a hardcoded password is equivalent to storing keys unencrypted.
-  const insecurePassword = 'password';
+  const insecurePassword = 'identity-provider';
   return deriveStoreKey(insecurePassword);
 }
 
 const seed = 'embark can decline fence confirm salute fence weird joy camp brown embrace';
-const serializedKeystorePromise = deriveInsecureStoreKey()
+const providerPromise = deriveInsecureStoreKey()
   .then((storeKey) => {
-    const keystore = lightwallet.keystore(seed, storeKey);
-    return JSON.parse(keystore.serialize());
+    const keystore = new lightwallet.keystore(seed, storeKey);
+    return new identity.provider.IdentityProvider({
+      keystore,
+      identities: [],
+      passwordProvider: (callback) => callback(null, 'identity-provider'),
+    }).initializedPromise;
   });
 
-serializedKeystorePromise
-  .then(lightwallet.keystore.deserialize)
-  .then((keystore) => {
-
-  })
-
-/*
-identity.config.initialize().then((config) => {
-  return identity.actions.createSenderIdentity(config)
-    .then((id) => {
-      console.log(id);
+providerPromise.then((provider) => {
+  console.log(provider.config.identities);
+  provider.createContractIdentity()
+    .then(() => {
+      console.log(provider.config.identities);
     });
 });
-*/
