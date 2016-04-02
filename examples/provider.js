@@ -1,5 +1,9 @@
+import BigNumber from 'bignumber.js';
 import lightwallet from 'eth-lightwallet';
+import _ from 'lodash';
+import Web3 from 'web3';
 import identity from '../src';
+import {waitForReceipt} from '../src/lib/transactions';
 import Promise from 'bluebird';
 global.Promise = Promise;  // Use bluebird for better error logging during development.
 
@@ -31,14 +35,32 @@ const providerPromise = deriveInsecureStoreKey()
   });
 
 providerPromise.then((provider) => {
-  console.log(provider.config.identities);
-  provider.start();
-  provider.createContractIdentity()
-    .then(() => {
-      console.log(provider.config.identities);
+  const keyIdentity = _.find(provider.config.identities,
+    (id) => !identity.types.ContractIdentity.is(id));
+  identity.actions.fundAddressFromNode(keyIdentity.address, new BigNumber('1e18'))
+    .then((txhash) => {
+      // Using an IdentityProvider for this web3 object fails, probably because
+      // provider-engine does something different with the filters used in
+      // waitForReceipt.
+      const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
+      return waitForReceipt(txhash, {
+        web3: web3,
+        receiptPromises: {},
+        batcher: {
+          add(request) {
+            const batch = web3.createBatch();
+            batch.add(request);
+            batch.execute();
+          },
+        },
+      });
     })
-    .catch((err) => {
-      throw err;
+    .then(() => {
+      provider.start();
+      provider.createContractIdentity()
+        .then(() => {
+          console.log(provider.config.identities);
+        });
+      provider.stop();
     });
-  provider.stop();
 });

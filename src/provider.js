@@ -8,9 +8,9 @@ import HookedWalletSubprovider from 'web3-provider-engine/subproviders/hooked-wa
 import Web3Subprovider from 'web3-provider-engine/subproviders/web3';
 import * as actions from './actions';
 import * as configLib from './config';
+import * as constants from './constants';
 import * as types from './types';
 
-const DEFAULT_RPC_URL = 'http://localhost:8545';
 
 const IdentityProviderConfig = t.struct({
   rpcUrl: t.maybe(t.String),
@@ -106,7 +106,7 @@ export class IdentityProvider extends ProviderEngine {
 
     this.addProvider(new IdentityWalletSubprovider(this.config));
     this.addProvider(new Web3Subprovider(
-      new Web3.providers.HttpProvider(this.config.rpcUrl || DEFAULT_RPC_URL)));
+      new Web3.providers.HttpProvider(this.config.rpcUrl || constants.DEFAULT_RPC_URL)));
   }
 
   static initialize(config) {
