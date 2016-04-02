@@ -12,7 +12,9 @@ Example
 -------
 
 ```
-// Don't use a hardcoded password like this unless insecure keys are acceptable.
+// The passwordProvider function is intended for allowing users to input their
+// password. Don't use a hardcoded password like this unless insecure keys are
+// acceptable.
 const passwordProvider = (callback) => callback(null, 'identity-provider'),
 const providerPromise = identity.keystore.create(passwordProvider)
   .then((keystore) => {
