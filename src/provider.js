@@ -1,4 +1,3 @@
-import Promise from 'bluebird';
 import lightwallet from 'eth-lightwallet';
 import _ from 'lodash';
 import t from 'tcomb';
@@ -9,6 +8,7 @@ import Web3Subprovider from 'web3-provider-engine/subproviders/web3';
 import * as actions from './actions';
 import * as configLib from './config';
 import * as constants from './constants';
+import * as keystoreLib from './keystore';
 import * as types from './types';
 
 
@@ -44,37 +44,6 @@ export class IdentityWalletSubprovider extends HookedWalletSubprovider {
   }
 }
 
-function bestKeystorePath(keystore) {
-  const hdPaths = Object.keys(keystore.ksData);
-  let primaryPath;
-  if (hdPaths.indexOf(keystore.defaultHdPathString) !== -1) {
-    primaryPath = keystore.defaultHdPathString;
-  } else {
-    hdPaths.sort();
-    primaryPath = hdPaths[0];
-  }
-
-  return {
-    hdPath: primaryPath,
-    addresses: keystore.ksData[primaryPath].addresses,
-  };
-}
-
-function deriveStoreKey(passwordProvider) {
-  return Promise.promisify(passwordProvider)()
-    .then(Promise.promisify(lightwallet.keystore.deriveKeyFromPassword));
-}
-
-/**
- * If the keystore has no addresses generated, generate one.
- */
-function ensureKeystoreHasAddress(keystore, storeKey) {
-  const pathInfo = bestKeystorePath(keystore);
-  if (pathInfo.addresses.length === 0) {
-    keystore.generateNewAddress(storeKey, 1, pathInfo.hdPath);
-  }
-}
-
 function mergeIdentitySources(identities, keystore) {
   const knownAddresses = new Set(identities.map((id) => id.address));
   const keystoreAddresses = keystore.ksData[keystore.defaultHdPathString].addresses.map((addr) => `0x${addr}`);
@@ -97,9 +66,9 @@ export class IdentityProvider extends ProviderEngine {
     super();
     this.config = _.cloneDeep(config); // Clone the immutable config to allow mutation as a stopgap.
 
-    this.initializedPromise = deriveStoreKey(this.config.passwordProvider)
+    this.initializedPromise = keystoreLib.deriveStoreKey(this.config.passwordProvider)
       .then((storeKey) => {
-        ensureKeystoreHasAddress(this.config.keystore, storeKey);
+        keystoreLib.ensureHasAddress(this.config.keystore, storeKey);
         this.config.identities = mergeIdentitySources(this.config.identities, this.config.keystore);
       })
       .then(() => this);

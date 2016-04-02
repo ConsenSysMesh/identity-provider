@@ -7,30 +7,16 @@ import {waitForReceipt} from '../src/lib/transactions';
 import Promise from 'bluebird';
 global.Promise = Promise;  // Use bluebird for better error logging during development.
 
-/**
- * 1. Create or load a keystore and identity definitions.
- * 2. Create a provider from a keystore, identity definitions, and an RPC URL.
- * 3. Find the first contract identity. Create one if none exist.
- * 4. Set that identity as active in the provider.
- */
 
-
-const deriveStoreKey = Promise.promisify(lightwallet.keystore.deriveKeyFromPassword);
-
-function deriveInsecureStoreKey() {
-  // Using a hardcoded password is equivalent to storing keys unencrypted.
-  const insecurePassword = 'identity-provider';
-  return deriveStoreKey(insecurePassword);
-}
-
+// Using a hardcoded password is equivalent to storing keys unencrypted.
+const passwordProvider = (callback) => callback(null, 'identity-provider');
 const seed = 'embark can decline fence confirm salute fence weird joy camp brown embrace';
-const providerPromise = deriveInsecureStoreKey()
-  .then((storeKey) => {
-    const keystore = new lightwallet.keystore(seed, storeKey);
+const providerPromise = identity.keystore.restoreFromSeed(seed, passwordProvider)
+  .then((keystore) => {
     return identity.provider.IdentityProvider.initialize({
       keystore,
       identities: [],
-      passwordProvider: (callback) => callback(null, 'identity-provider'),
+      passwordProvider,
     });
   });
 
