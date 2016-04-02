@@ -3,5 +3,8 @@
   "extends": "airbnb",
   "rules": {
     "eqeqeq": [2, "allow-null"],
+    "func-names": [0],
+    "new-cap": [0],
+    "space-before-function-paren": [0]
   }
 }

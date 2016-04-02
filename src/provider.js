@@ -1,4 +1,3 @@
-import lightwallet from 'eth-lightwallet';
 import _ from 'lodash';
 import t from 'tcomb';
 import Web3 from 'web3';
@@ -12,19 +11,19 @@ import * as keystoreLib from './keystore';
 import * as types from './types';
 
 
-const IdentityProviderConfig = t.struct({
+const IdentityProviderState = t.struct({
   rpcUrl: t.maybe(t.String),
   passwordProvider: t.Function,
   keystore: t.Any,
   identities: t.Any,
-}, 'IdentityProviderConfig');
+}, 'IdentityProviderState');
 
 
 export class IdentityWalletSubprovider extends HookedWalletSubprovider {
-  constructor(config: IdentityProviderConfig) {
+  constructor(state: IdentityProviderState) {
     super({
       getAccounts(callback) {
-        callback(null, config.identities.map(id => id.address));
+        callback(null, state.identities.map(id => id.address));
       },
 
       approveTransaction(txParams, callback) {
@@ -32,13 +31,9 @@ export class IdentityWalletSubprovider extends HookedWalletSubprovider {
       },
 
       signTransaction(fullTxParams, callback) {
-        // TODO: Check fullTxParams.from against config.identities to see if
-        // a contract identity is being used, then handle it accordingly using
-        // the appropriate Signer from ConsenSys/eth-lightwallet#75.
-        const keystoreString = JSON.stringify(config.keystore);
-        const keystore = lightwallet.keystore.deserialize(keystoreString);
-        keystore.passwordProvider = config.passwordProvider;
-        keystore.signTransaction(fullTxParams, callback);
+        const sender = fullTxParams.from;
+        const identity = IdentityProviderState(state).identityForAddress(sender);
+        identity.signTransaction(fullTxParams, state, callback);
       },
     });
   }
@@ -62,31 +57,31 @@ function mergeIdentitySources(identities, keystore) {
  * the keystore.
  */
 export class IdentityProvider extends ProviderEngine {
-  constructor(config: IdentityProviderConfig) {
+  constructor(state: IdentityProviderState) {
     super();
-    this.config = _.cloneDeep(config); // Clone the immutable config to allow mutation as a stopgap.
+    this.state = _.cloneDeep(state); // Clone the immutable state to allow mutation as a stopgap.
 
-    this.initializedPromise = keystoreLib.deriveStoreKey(this.config.passwordProvider)
+    this.initializedPromise = keystoreLib.deriveStoreKey(this.state.passwordProvider)
       .then((storeKey) => {
-        keystoreLib.ensureHasAddress(this.config.keystore, storeKey);
-        this.config.identities = mergeIdentitySources(this.config.identities, this.config.keystore);
+        keystoreLib.ensureHasAddress(this.state.keystore, storeKey);
+        this.state.identities = mergeIdentitySources(this.state.identities, this.state.keystore);
       })
       .then(() => this);
 
-    this.addProvider(new IdentityWalletSubprovider(this.config));
+    this.addProvider(new IdentityWalletSubprovider(this.state));
     this.addProvider(new Web3Subprovider(
-      new Web3.providers.HttpProvider(this.config.rpcUrl || constants.DEFAULT_RPC_URL)));
+      new Web3.providers.HttpProvider(this.state.rpcUrl || constants.DEFAULT_RPC_URL)));
   }
 
-  static initialize(config) {
-    const provider = new IdentityProvider(config);
+  static initialize(state) {
+    const provider = new IdentityProvider(state);
     return provider.initializedPromise;
   }
 
   createContractIdentity(from) {
     let sender;
     if (from == null) {
-      const keyIdentity = _.find(this.config.identities, (id) => !types.ContractIdentity.is(id));
+      const keyIdentity = _.find(this.state.identities, (id) => !types.ContractIdentity.is(id));
       sender = keyIdentity.address;
     } else {
       sender = from;
@@ -99,7 +94,7 @@ export class IdentityProvider extends ProviderEngine {
     return actions.createContractIdentity(txConfig)
       .then((newIdentity) => {
         // Add the new identity to the beginning of the array to select it.
-        this.config.identities.unshift(newIdentity);
+        this.state.identities.unshift(newIdentity);
         return newIdentity;
       });
   }

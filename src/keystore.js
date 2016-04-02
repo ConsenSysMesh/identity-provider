@@ -2,6 +2,11 @@ import lightwallet from 'eth-lightwallet';
 import Promise from 'bluebird';
 
 
+export function constructFromState(state) {
+  const keystoreString = JSON.stringify(state.keystore);
+  return lightwallet.keystore.deserialize(keystoreString);
+}
+
 export function deriveStoreKey(passwordProvider) {
   return Promise.promisify(passwordProvider)()
     .then(Promise.promisify(lightwallet.keystore.deriveKeyFromPassword));
