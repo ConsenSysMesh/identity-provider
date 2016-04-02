@@ -27,6 +27,9 @@ const providerPromise = identity.keystore.create(passwordProvider)
 
 providerPromise.then((provider) => {
   const web3 = new Web3(provider);
+  // Start provider-engine's block polling. If you forget this, RPC requests
+  // will never execute.
+  provider.start();
   ...
   // After adding funds to the key identity, you can use it to create a contract
   // identity.
@@ -38,7 +41,9 @@ providerPromise.then((provider) => {
       // as the `from` parameter in web3 transaction objects, and identity-provider
       // will (soon) manipulate the transaction appropriately to send it for you.
       web3.eth.sendTransaction({from: contractIdentity.address, ...});
-  });
+    }).then(() => {
+      provider.stop();
+    });
 });
 ```
 
