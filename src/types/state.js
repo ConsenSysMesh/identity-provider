@@ -1,13 +1,12 @@
 import _ from 'lodash';
 import t from 'tcomb';
-import {Identity} from './base';
-import {ContractIdentity} from './Identity';
+import {ContractIdentity} from './identity';
 
 
 const IdentityProviderState = t.struct({
-  rpcUrl: t.maybe(t.String),
+  web3Provider: t.Any,
   passwordProvider: t.Function,
-  identities: t.list(Identity),
+  identities: t.list(t.Any),
   keystore: t.Any,
 }, 'IdentityProviderState');
 

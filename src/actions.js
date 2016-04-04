@@ -2,8 +2,7 @@ import Promise from 'bluebird';
 import _ from 'lodash';
 import Web3 from 'web3';
 import identity from '.';
-import * as constants from './constants';
-import {newContractHooks, txDefaults, waitForReceipt} from './lib/transactions';
+import {newContractHooks, txDefaults} from './lib/transactions';
 
 
 export function deployProxyContract(config) {
@@ -41,8 +40,8 @@ export function createContractIdentity(config) {
  * In the real world, the key identity will need funds from ShapeShift or a
  * user's preexisting ether wallet.
  */
-export function fundAddressFromNode(address, wei, rpcUrl = constants.DEFAULT_RPC_URL) {
-  const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
+export function fundAddressFromNode(address, wei, provider) {
+  const web3 = new Web3(provider);
   const getAccounts = Promise.promisify(web3.eth.getAccounts);
   const sendTransaction = Promise.promisify(web3.eth.sendTransaction);
   return getAccounts()

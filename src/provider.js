@@ -6,17 +6,8 @@ import HookedWalletSubprovider from 'web3-provider-engine/subproviders/hooked-wa
 import Web3Subprovider from 'web3-provider-engine/subproviders/web3';
 import * as actions from './actions';
 import * as configLib from './config';
-import * as constants from './constants';
 import * as keystoreLib from './keystore';
-import * as types from './types';
-
-
-const IdentityProviderState = t.struct({
-  rpcUrl: t.maybe(t.String),
-  passwordProvider: t.Function,
-  keystore: t.Any,
-  identities: t.Any,
-}, 'IdentityProviderState');
+import {Identity, IdentityProviderState, Transactable} from './types';
 
 
 export class IdentityWalletSubprovider extends HookedWalletSubprovider {
@@ -33,7 +24,7 @@ export class IdentityWalletSubprovider extends HookedWalletSubprovider {
       signTransaction(fullTxParams, callback) {
         const sender = fullTxParams.from;
         const identity = IdentityProviderState(state).identityForAddress(sender);
-        identity.signTransaction(fullTxParams, state, callback);
+        Transactable(identity).signTransaction(fullTxParams, state, callback);
       },
     });
   }
@@ -44,7 +35,7 @@ function mergeIdentitySources(identities, keystore) {
   const keystoreAddresses = keystore.ksData[keystore.defaultHdPathString].addresses.map((addr) => `0x${addr}`);
   const missingIdentities = keystoreAddresses.reduce((found, address) => {
     if (!knownAddresses.has(address)) {
-      found.push(types.Identity({address}));
+      found.push(Identity({address}));
     }
     return found;
   }, []);
@@ -69,8 +60,7 @@ export class IdentityProvider extends ProviderEngine {
       .then(() => this);
 
     this.addProvider(new IdentityWalletSubprovider(this.state));
-    this.addProvider(new Web3Subprovider(
-      new Web3.providers.HttpProvider(this.state.rpcUrl || constants.DEFAULT_RPC_URL)));
+    this.addProvider(new Web3Subprovider(this.state.web3Provider));
   }
 
   static initialize(state) {
@@ -93,7 +83,7 @@ export class IdentityProvider extends ProviderEngine {
     return actions.createContractIdentity(txConfig)
       .then((newIdentity) => {
         // Add the new identity to the beginning of the array to select it.
-        this.state.identities.unshift(newIdentity);
+        this.state.identities = [newIdentity].concat(this.state.identities);
         return newIdentity;
       });
   }

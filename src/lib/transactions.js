@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js';
+import Web3 from 'web3';
 import {promiseCallback} from './callbacks';
 
-import type Web3 from 'web3';
 import type {Batcher} from './web3-batch';
 
 // ReceiptConfig is a subset of gnosis.config.Config.
@@ -65,6 +65,29 @@ export function waitForReceipt(txhash, config: ReceiptConfig) {
   }
 
   return promiseParts.promise;
+}
+
+/**
+ * A hacky wrapper around waitForReceipt that generates arguments for you.
+ *
+ * FIXME: Redux is a better way to manage the receipt promises state across
+ * calls, but supporting a shared cache was a premature optimization anyway.
+ * Remove the cache and remove the batcher from waitForReceipt, then this
+ * hack will be unnecessary.
+ */
+export function receiptPromise(txhash, web3Provider) {
+  const web3 = new Web3(web3Provider);
+  return waitForReceipt(txhash, {
+    web3: web3,
+    receiptPromises: {},
+    batcher: {
+      add(request) {
+        const batch = web3.createBatch();
+        batch.add(request);
+        batch.execute();
+      },
+    },
+  });
 }
 
 export function isResultZero(result) {

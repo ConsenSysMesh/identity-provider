@@ -3,7 +3,7 @@ import lightwallet from 'eth-lightwallet';
 import _ from 'lodash';
 import Web3 from 'web3';
 import identity from '../src';
-import {waitForReceipt} from '../src/lib/transactions';
+import {receiptPromise} from '../src/lib/transactions';
 import Promise from 'bluebird';
 global.Promise = Promise;  // Use bluebird for better error logging during development.
 
@@ -11,41 +11,60 @@ global.Promise = Promise;  // Use bluebird for better error logging during devel
 // Using a hardcoded password is equivalent to storing keys unencrypted.
 const passwordProvider = (callback) => callback(null, 'identity-provider');
 const seed = 'embark can decline fence confirm salute fence weird joy camp brown embrace';
+const httpProvider = new Web3.providers.HttpProvider('http://localhost:8545');
 const providerPromise = identity.keystore.restoreFromSeed(seed, passwordProvider)
   .then((keystore) => {
     return identity.provider.IdentityProvider.initialize({
       keystore,
-      identities: [],
       passwordProvider,
+      identities: [],
+      web3Provider: httpProvider,
     });
   });
 
 providerPromise.then((provider) => {
-  const keyIdentity = _.find(provider.config.identities,
-    (id) => !identity.types.ContractIdentity.is(id));
-  identity.actions.fundAddressFromNode(keyIdentity.address, new BigNumber('1e18'))
-    .then((txhash) => {
-      // Using an IdentityProvider for this web3 object fails, probably because
-      // provider-engine does something different with the filters used in
-      // waitForReceipt.
-      const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
-      return waitForReceipt(txhash, {
-        web3: web3,
-        receiptPromises: {},
-        batcher: {
-          add(request) {
-            const batch = web3.createBatch();
-            batch.add(request);
-            batch.execute();
-          },
-        },
-      });
-    })
+  const state = identity.types.IdentityProviderState(provider.state);
+  const keyIdentity = state.getKeyIdentity();
+  identity.actions.fundAddressFromNode(keyIdentity.address, new BigNumber('1e18'), httpProvider)
+    .then((txhash) => receiptPromise(txhash, httpProvider))
     .then(() => {
       provider.start();
       provider.createContractIdentity()
-        .then(() => {
-          console.log(provider.config.identities);
+        .then((contractIdentity) => {
+          console.log(provider.state.identities);
+          // Send funds to the new identity.
+          const web3 = new Web3(provider);
+          const sendTransaction = Promise.promisify(web3.eth.sendTransaction);
+          sendTransaction({
+            from: keyIdentity.address,
+            to: contractIdentity.address,
+            value: new BigNumber('5e17'),
+          })
+            .then((txhash) => receiptPromise(txhash, httpProvider))
+            .then(() => {
+              // Send funds back from the contract to the key.
+              return sendTransaction({
+                from: contractIdentity.address,
+                to: keyIdentity.address,
+                value: new BigNumber('4e17'),
+              });
+            })
+            .then((txhash) => receiptPromise(txhash, httpProvider))
+            .then(() => {
+              const getBalance = Promise.promisify(web3.eth.getBalance);
+              return getBalance(keyIdentity.address)
+                .then((balance) => {
+                  const meetsExpectations = balance.gt(new BigNumber('8e17'));
+                  const summary = meetsExpectations ? 'PASS' : 'FAIL';
+                  console.log(`${summary}: key balance > 8e17, actual ${balance}`);
+                })
+                .then(() => getBalance(contractIdentity.address))
+                .then((balance) => {
+                  const meetsExpectations = balance.gt(0) && balance.lt(new BigNumber('1e17'));
+                  const summary = meetsExpectations ? 'PASS' : 'FAIL';
+                  console.log(`${summary}: 0 < contract balance < 1e17, actual ${balance}`);
+                });
+            });
         });
       provider.stop();
     });
