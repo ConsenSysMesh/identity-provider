@@ -1,12 +1,11 @@
 import abi from 'ethereumjs-abi';
-import Transaction from 'ethereumjs-tx';
-import {addHexPrefix} from 'ethereumjs-util';
+import _ from 'lodash';
 import t from 'tcomb';
 import {Address, Identity} from './base';
-import IdentityProviderState from './state';
 import * as keystoreLib from '../keystore';
 
 export const KeystoreIdentity = Identity.extend({}, 'KeystoreIdentity');
+Identity.registerContractMethod(KeystoreIdentity);
 
 KeystoreIdentity.prototype.signTransaction = function (txParams, providerState, callback) {
   const keystore = keystoreLib.constructFromState(providerState);
@@ -30,6 +29,7 @@ export const SenderIdentity = t.refinement(
   (id) => id.methodName === 'sender',
   'SenderIdentity'
 );
+Identity.registerContractMethod(SenderIdentity);
 
 SenderIdentity.prototype.signTransaction = function (txParams, providerState, callback) {
   // Generate the data for the proxy contract call.
@@ -58,3 +58,16 @@ export const OwnerIdentity = t.refinement(
   (id) => id.methodName.startsWith('owner'),
   'OwnerIdentity'
 );
+
+/**
+ * Cast an Identity instance to its appropriate subtype.
+ *
+ * FIXME: It's odd to separate this from the definition of Identity, but since
+ * it needs KeystoreIdentity, this might be the best option that avoids a
+ * circular import.
+ */
+Identity.prototype.asSubtype = function () {
+  const allMethods = Identity.contractMethods.concat(KeystoreIdentity);
+  const matchers = allMethods.map((Type) => [Type, (instance) => Type(instance)]);
+  return t.match(this, ..._.flatten(matchers));
+};

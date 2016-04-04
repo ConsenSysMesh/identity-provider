@@ -24,3 +24,12 @@ export const Address = t.refinement(
 export const Identity = t.struct({
   address: Address,
 }, 'Identity');
+
+Identity.contractMethods = [];
+Identity.registerContractMethod = function (identityType) {
+  Identity.contractMethods.push(identityType);
+};
+
+Identity.prototype.signTransaction = function (txParams, providerState, callback) {
+  this.asSubtype().signTransaction(txParams, providerState, callback);
+};

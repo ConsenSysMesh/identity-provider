@@ -81,8 +81,7 @@ export class IdentityProvider extends ProviderEngine {
   createContractIdentity(from) {
     let sender;
     if (from == null) {
-      const keyIdentity = _.find(this.state.identities, (id) => !types.ContractIdentity.is(id));
-      sender = keyIdentity.address;
+      sender = IdentityProviderState(this.state).getKeyIdentity().address;
     } else {
       sender = from;
     }
