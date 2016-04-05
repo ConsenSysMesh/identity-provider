@@ -60,9 +60,9 @@ providerPromise.then((provider) => {
                 })
                 .then(() => getBalance(contractIdentity.address))
                 .then((balance) => {
-                  const meetsExpectations = balance.gt(0) && balance.lt(new BigNumber('1e17'));
+                  const meetsExpectations = balance.eq(new BigNumber('1e17'));
                   const summary = meetsExpectations ? 'PASS' : 'FAIL';
-                  console.log(`${summary}: 0 < contract balance < 1e17, actual ${balance}`);
+                  console.log(`${summary}: contract balance == 1e17, actual ${balance}`);
                 });
             });
         });

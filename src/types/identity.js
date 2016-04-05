@@ -1,4 +1,6 @@
+import BN from 'bn.js';
 import abi from 'ethereumjs-abi';
+import utils from 'ethereumjs-util';
 import _ from 'lodash';
 import t from 'tcomb';
 import {Address, Identity} from './base';
@@ -7,7 +9,6 @@ import * as keystoreLib from '../keystore';
 export const KeystoreIdentity = Identity.extend({}, 'KeystoreIdentity');
 
 KeystoreIdentity.prototype.signTransaction = function (txParams, providerState, callback) {
-  console.log(txParams);
   const keystore = keystoreLib.constructFromState(providerState);
   keystore.passwordProvider = providerState.passwordProvider;
   keystore.signTransaction(txParams, callback);
@@ -33,13 +34,15 @@ export const ContractIdentity = Identity.extend({
 }, 'ContractIdentity');
 
 ContractIdentity.prototype.signTransaction = function (txParams, providerState, callback) {
-  console.log(txParams);
   // Generate the data for the proxy contract call.
+  // FIXME: ethereumjs-abi handles 0x-prefixed numbers in master, but not in 0.5.0.
+  const forwardArgs = [
+    new BN(utils.stripHexPrefix(txParams.to), 16),
+    new BN(utils.stripHexPrefix(txParams.value), 16),
+    utils.toBuffer(txParams.data),
+  ];
   const outerTxData = abi.rawEncode(
-    'forward',
-    ['address', 'uint256', 'bytes'],
-    [txParams.to, txParams.value || 0, txParams.data || 0]
-  );
+    'forward', ['address', 'uint256', 'bytes'], forwardArgs);
 
   // Insert the proxy contract call data in a new transaction sent from the
   // specified identity.
