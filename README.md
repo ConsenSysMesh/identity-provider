@@ -39,7 +39,7 @@ providerPromise.then((provider) => {
     .then((contractIdentity) => {
       // Now you have a contract identity. contractIdentity.address can be passed
       // as the `from` parameter in web3 transaction objects, and identity-provider
-      // will (soon) manipulate the transaction appropriately to send it for you.
+      // will manipulate the transaction appropriately to send it for you.
       web3.eth.sendTransaction({from: contractIdentity.address, ...});
     }).then(() => {
       provider.stop();
@@ -50,7 +50,6 @@ providerPromise.then((provider) => {
 TODO
 ----
 
-- Use eth-lightwallet's ProxySigner to send transactions as a contract identity.
 - Use redux to make identity-provider's state easy for applications to consume.
 
 Future Directions
