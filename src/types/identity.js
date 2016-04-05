@@ -4,6 +4,7 @@ import utils from 'ethereumjs-util';
 import _ from 'lodash';
 import t from 'tcomb';
 import {Address, Identity} from './base';
+import IdentityProviderState from './state';
 import * as keystoreLib from '../keystore';
 
 export const KeystoreIdentity = Identity.extend({}, 'KeystoreIdentity');
@@ -59,7 +60,9 @@ ContractIdentity.prototype.signTransaction = function (txParams, providerState, 
       newParams[param] = txParams[param];
     }
   });
-  KeystoreIdentity({address: this.key}).signTransaction(newParams, providerState, callback);
+
+  const senderIdentity = IdentityProviderState(providerState).identityForAddress(this.key);
+  Transactable(senderIdentity).signTransaction(newParams, providerState, callback);
 };
 
 export const SenderIdentity = t.refinement(
