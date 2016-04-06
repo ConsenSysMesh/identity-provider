@@ -19,9 +19,12 @@ const passwordProvider = (callback) => callback(null, 'identity-provider'),
 const providerPromise = identity.keystore.create(passwordProvider)
   .then((keystore) => {
     return identity.provider.IdentityProvider.initialize({
-      keystore,
-      identities: [],
-      passwordProvider,
+      state: {
+        keystore,
+        identities: [],
+        passwordProvider,
+        web3Provider: new Web3.providers.HttpProvider('http://localhost:8545'),
+      },
     });
   });
 
@@ -33,7 +36,8 @@ providerPromise.then((provider) => {
   ...
   // After adding funds to the key identity, you can use it to create a contract
   // identity.
-  const keyIdentity = provider.config.identities[0]; // Add funds to keyIdentity.address.
+  const state = provider.substore.getState();
+  const keyIdentity = state.getKeyIdentity(); // Add funds to keyIdentity.address.
 
   provider.createContractIdentity()
     .then((contractIdentity) => {
