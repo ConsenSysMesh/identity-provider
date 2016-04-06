@@ -47,11 +47,6 @@ providerPromise.then((provider) => {
 });
 ```
 
-TODO
-----
-
-- Use redux to make identity-provider's state easy for applications to consume.
-
 Future Directions
 -----------------
 
