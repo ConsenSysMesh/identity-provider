@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js';
 import Web3 from 'web3';
 import identity from '../src';
-import {receiptPromise} from '../src/lib/transactions';
+import {waitForReceipt} from '../src/lib/transactions';
 import Promise from 'bluebird';
 global.Promise = Promise;  // Use bluebird for better error logging during development.
 
@@ -26,7 +26,7 @@ providerPromise.then((provider) => {
   const state = provider.substore.getState();
   const keyIdentity = state.getKeyIdentity();
   identity.actions.fundAddressFromNode(keyIdentity.address, new BigNumber('1e18'), httpProvider)
-    .then((txhash) => receiptPromise(txhash, httpProvider))
+    .then((txhash) => waitForReceipt(txhash, httpProvider))
     .then(() => {
       provider.start();
       provider.createContractIdentity()
@@ -40,7 +40,7 @@ providerPromise.then((provider) => {
             to: contractIdentity.address,
             value: new BigNumber('5e17'),
           })
-            .then((txhash) => receiptPromise(txhash, httpProvider))
+            .then((txhash) => waitForReceipt(txhash, httpProvider))
             .then(() => {
               // Send funds back from the contract to the key.
               return sendTransaction({
@@ -49,7 +49,7 @@ providerPromise.then((provider) => {
                 value: new BigNumber('4e17'),
               });
             })
-            .then((txhash) => receiptPromise(txhash, httpProvider))
+            .then((txhash) => waitForReceipt(txhash, httpProvider))
             .then(() => {
               const getBalance = Promise.promisify(web3.eth.getBalance);
               return getBalance(keyIdentity.address)

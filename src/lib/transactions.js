@@ -2,14 +2,6 @@ import BigNumber from 'bignumber.js';
 import Web3 from 'web3';
 import {promiseCallback} from './callbacks';
 
-import type {Batcher} from './web3-batch';
-
-// ReceiptConfig is a subset of gnosis.config.Config.
-type ReceiptConfig = {
- web3: Web3,
- batcher: Batcher,
- receiptPromises: any,
-}
 
 function deconstructedPromise() {
   const parts = {};
@@ -20,24 +12,16 @@ function deconstructedPromise() {
   return parts;
 }
 
-function checkForReceipts(filter, config: ReceiptConfig) {
+function receiptChecker(hash, filter, web3Provider, resolve) {
   return () => {
-    Object.keys(config.receiptPromises).forEach((hash) => {
-      const request = config.web3.eth.getTransactionReceipt.request(hash, (err, receipt) => {
-        if (err || receipt == null) {
-          return;
-        }
+    new Web3(web3Provider).eth.getTransactionReceipt(hash, (err, receipt) => {
+      if (err || receipt == null) {
+        return;
+      }
 
-        console.log(`Transaction ${hash} was mined in block ${receipt.blockNumber}.`)
-        if (config.receiptPromises[hash] != null) {
-          config.receiptPromises[hash].resolve(receipt);
-          delete config.receiptPromises[hash];
-        }
-        if (Object.keys(config.receiptPromises).length === 0) {
-          filter.stopWatching();
-        }
-      });
-      config.batcher.add(request);
+      console.log(`Transaction ${hash} was mined in block ${receipt.blockNumber}.`);
+      resolve(receipt);
+      filter.stopWatching();
     });
   };
 }
@@ -46,48 +30,12 @@ function checkForReceipts(filter, config: ReceiptConfig) {
  * Create a promise that resolves to the receipt for the given transaction
  * hash once it has been included in a block.
  */
-export function waitForReceipt(txhash, config: ReceiptConfig) {
+export function waitForReceipt(txhash, web3Provider) {
   console.log(`Waiting for transaction ${txhash} to be mined...`);
-  if (config.receiptPromises[txhash] != null) {
-    return config.receiptPromises[txhash].promise;
-  }
-
-  const startWatching = Object.keys(config.receiptPromises).length === 0;
-
-  // Create a promise and store the resolution functions to use when new
-  // blocks arrive.
-  const promiseParts = deconstructedPromise();
-  config.receiptPromises[txhash] = promiseParts;
-
-  if (startWatching) {
-    const filter = config.web3.eth.filter('latest');
-    filter.watch(checkForReceipts(filter, config));
-  }
-
-  return promiseParts.promise;
-}
-
-/**
- * A hacky wrapper around waitForReceipt that generates arguments for you.
- *
- * FIXME: Redux is a better way to manage the receipt promises state across
- * calls, but supporting a shared cache was a premature optimization anyway.
- * Remove the cache and remove the batcher from waitForReceipt, then this
- * hack will be unnecessary.
- */
-export function receiptPromise(txhash, web3Provider) {
-  const web3 = new Web3(web3Provider);
-  return waitForReceipt(txhash, {
-    web3: web3,
-    receiptPromises: {},
-    batcher: {
-      add(request) {
-        const batch = web3.createBatch();
-        batch.add(request);
-        batch.execute();
-      },
-    },
-  });
+  const {promise, resolve} = deconstructedPromise();
+  const filter = new Web3(web3Provider).eth.filter('latest');
+  filter.watch(receiptChecker(txhash, filter, web3Provider, resolve));
+  return promise;
 }
 
 export function isResultZero(result) {
