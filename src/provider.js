@@ -1,5 +1,3 @@
-import _ from 'lodash';
-import t from 'tcomb';
 import Web3 from 'web3';
 import ProviderEngine from 'web3-provider-engine';
 import HookedWalletSubprovider from 'web3-provider-engine/subproviders/hooked-wallet';
@@ -7,14 +5,21 @@ import Web3Subprovider from 'web3-provider-engine/subproviders/web3';
 import * as actions from './actions';
 import * as configLib from './config';
 import * as keystoreLib from './keystore';
-import {Identity, IdentityProviderState, Transactable} from './types';
+import {SubstoreCreator} from './store';
+import {Identity, Transactable} from './types';
 
 
 export class IdentityWalletSubprovider extends HookedWalletSubprovider {
-  constructor(state: IdentityProviderState) {
+  // TODO: Move away from HookedWalletSubprovider. HookedWalletSubprovider is
+  // intended for providers that will always sign transactions internally, but
+  // IdentityProvider should allow manipulated but unsigned transactions to be
+  // passed to other subproviders. This requires another feature that would
+  // be nice: the ability to call next() inside handleRequest to allow other
+  // subproviders to handle addresses that aren't controlled by this subprovider.
+  constructor(substore) {
     super({
       getAccounts(callback) {
-        callback(null, state.identities.map(id => id.address));
+        callback(null, substore.getState().identities.map(id => id.address));
       },
 
       approveTransaction(txParams, callback) {
@@ -23,7 +28,8 @@ export class IdentityWalletSubprovider extends HookedWalletSubprovider {
 
       signTransaction(fullTxParams, callback) {
         const sender = fullTxParams.from;
-        const identity = IdentityProviderState(state).identityForAddress(sender);
+        const state = substore.getState();
+        const identity = state.identityForAddress(sender);
         Transactable(identity).signTransaction(fullTxParams, state, callback);
       },
     });
@@ -48,30 +54,44 @@ function mergeIdentitySources(identities, keystore) {
  * the keystore.
  */
 export class IdentityProvider extends ProviderEngine {
-  constructor(state: IdentityProviderState) {
+  // TODO: It would be nice to keep synthetic identities completely separate
+  // from the keystore in its own subprovider, but the architecture of
+  // provider-engine doesn't make it easy for multiple subproviders to
+  // contribute values to the same RPC call, e.g. getAddresses would need
+  // synthetic identities as well as keystore identities. IdentityProvider
+  // is a stopgap that combines the two.
+  constructor(substoreCreator: SubstoreCreator) {
     super();
-    this.state = _.cloneDeep(state); // Clone the immutable state to allow mutation as a stopgap.
+    this.substore = SubstoreCreator(substoreCreator).getSubstore();
+    const state = this.substore.getState();
 
-    this.initializedPromise = keystoreLib.deriveStoreKey(this.state.passwordProvider)
+    this.initializedPromise = keystoreLib.deriveStoreKey(state.passwordProvider)
       .then((storeKey) => {
-        keystoreLib.ensureHasAddress(this.state.keystore, storeKey);
-        this.state.identities = mergeIdentitySources(this.state.identities, this.state.keystore);
+        keystoreLib.ensureHasAddress(state.keystore, storeKey);
+        const identities = mergeIdentitySources(state.identities, state.keystore);
+        this.substore.store.dispatch({
+          type: 'UPDATE_IDENTITIES',
+          identities,
+        });
       })
       .then(() => this);
 
-    this.addProvider(new IdentityWalletSubprovider(this.state));
-    this.addProvider(new Web3Subprovider(this.state.web3Provider));
+    this.addProvider(new IdentityWalletSubprovider(this.substore));
+    this.addProvider(new Web3Subprovider(state.web3Provider));
   }
 
-  static initialize(state) {
-    const provider = new IdentityProvider(state);
+  static initialize(substoreCreator: SubstoreCreator) {
+    const provider = new IdentityProvider(substoreCreator);
     return provider.initializedPromise;
   }
 
+  /**
+   * Create a contract identity and add it to the state.
+   */
   createContractIdentity(from) {
     let sender;
     if (from == null) {
-      sender = IdentityProviderState(this.state).getKeyIdentity().address;
+      sender = this.substore.getState().getKeyIdentity().address;
     } else {
       sender = from;
     }
@@ -83,7 +103,11 @@ export class IdentityProvider extends ProviderEngine {
     return actions.createContractIdentity(txConfig)
       .then((newIdentity) => {
         // Add the new identity to the beginning of the array to select it.
-        this.state.identities = [newIdentity].concat(this.state.identities);
+        const identities = [newIdentity].concat(this.substore.getState().identities);
+        this.substore.store.dispatch({
+          type: 'UPDATE_IDENTITIES',
+          identities,
+        });
         return newIdentity;
       });
   }

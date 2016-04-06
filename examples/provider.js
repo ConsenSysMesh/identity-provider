@@ -1,6 +1,4 @@
 import BigNumber from 'bignumber.js';
-import lightwallet from 'eth-lightwallet';
-import _ from 'lodash';
 import Web3 from 'web3';
 import identity from '../src';
 import {receiptPromise} from '../src/lib/transactions';
@@ -15,15 +13,17 @@ const httpProvider = new Web3.providers.HttpProvider('http://localhost:8545');
 const providerPromise = identity.keystore.restoreFromSeed(seed, passwordProvider)
   .then((keystore) => {
     return identity.provider.IdentityProvider.initialize({
-      keystore,
-      passwordProvider,
-      identities: [],
-      web3Provider: httpProvider,
+      state: {
+        keystore,
+        passwordProvider,
+        identities: [],
+        web3Provider: httpProvider,
+      },
     });
   });
 
 providerPromise.then((provider) => {
-  const state = identity.types.IdentityProviderState(provider.state);
+  const state = provider.substore.getState();
   const keyIdentity = state.getKeyIdentity();
   identity.actions.fundAddressFromNode(keyIdentity.address, new BigNumber('1e18'), httpProvider)
     .then((txhash) => receiptPromise(txhash, httpProvider))
@@ -31,7 +31,7 @@ providerPromise.then((provider) => {
       provider.start();
       provider.createContractIdentity()
         .then((contractIdentity) => {
-          console.log(provider.state.identities);
+          console.log(provider.substore.getState().identities);
           // Send funds to the new identity.
           const web3 = new Web3(provider);
           const sendTransaction = Promise.promisify(web3.eth.sendTransaction);

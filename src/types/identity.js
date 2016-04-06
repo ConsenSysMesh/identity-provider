@@ -1,17 +1,16 @@
 import BN from 'bn.js';
 import abi from 'ethereumjs-abi';
 import utils from 'ethereumjs-util';
-import _ from 'lodash';
 import t from 'tcomb';
 import {Address, Identity} from './base';
-import IdentityProviderState from './state';
+import {State} from '../store';
 import * as keystoreLib from '../keystore';
 
 export const KeystoreIdentity = Identity.extend({}, 'KeystoreIdentity');
 
-KeystoreIdentity.prototype.signTransaction = function (txParams, providerState, callback) {
-  const keystore = keystoreLib.constructFromState(providerState);
-  keystore.passwordProvider = providerState.passwordProvider;
+KeystoreIdentity.prototype.signTransaction = function (txParams, state, callback) {
+  const keystore = keystoreLib.constructFromState(state);
+  keystore.passwordProvider = state.passwordProvider;
   keystore.signTransaction(txParams, callback);
 };
 
@@ -34,7 +33,7 @@ export const ContractIdentity = Identity.extend({
   key: Address,
 }, 'ContractIdentity');
 
-ContractIdentity.prototype.signTransaction = function (txParams, providerState, callback) {
+ContractIdentity.prototype.signTransaction = function (txParams, state, callback) {
   // Generate the data for the proxy contract call.
   // FIXME: ethereumjs-abi handles 0x-prefixed numbers in master, but not in 0.5.0.
   const forwardArgs = [
@@ -61,8 +60,8 @@ ContractIdentity.prototype.signTransaction = function (txParams, providerState, 
     }
   });
 
-  const senderIdentity = IdentityProviderState(providerState).identityForAddress(this.key);
-  Transactable(senderIdentity).signTransaction(newParams, providerState, callback);
+  const senderIdentity = State(state).identityForAddress(this.key);
+  Transactable(senderIdentity).signTransaction(newParams, state, callback);
 };
 
 export const SenderIdentity = t.refinement(
@@ -84,7 +83,7 @@ export const OwnerIdentity = t.refinement(
  *
  * e.g. Transactable(identity).signTransaction(...);
  */
-export const Transactable = t.union([KeystoreIdentity, SenderIdentity]);
+export const Transactable = t.union([KeystoreIdentity, SenderIdentity], 'Transactable');
 Transactable.dispatch = function (data) {
   if (data.methodName == null) {
     return KeystoreIdentity;
