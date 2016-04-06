@@ -19,7 +19,10 @@ export class IdentityWalletSubprovider extends HookedWalletSubprovider {
   constructor(substore) {
     super({
       getAccounts(callback) {
-        callback(null, substore.getState().identities.map(id => id.address));
+        const state = substore.getState();
+        const identityAccounts = state.identities.map(id => id.address);
+        const keyring = keystoreLib.bestKeyring(state.keystore);
+        callback(null, identityAccounts.concat(keyring.addresses));
       },
 
       approveTransaction(txParams, callback) {
@@ -36,22 +39,13 @@ export class IdentityWalletSubprovider extends HookedWalletSubprovider {
   }
 }
 
-function mergeIdentitySources(identities, keystore) {
-  const knownAddresses = new Set(identities.map((id) => id.address));
-  const keystoreAddresses = keystore.ksData[keystore.defaultHdPathString].addresses.map((addr) => `0x${addr}`);
-  const missingIdentities = keystoreAddresses.reduce((found, address) => {
-    if (!knownAddresses.has(address)) {
-      found.push(Identity({address}));
-    }
-    return found;
-  }, []);
-  return identities.concat(missingIdentities);
-}
-
 /**
  * A Web3 provider that can send transactions as the accounts its keystore
  * controls, as well as contract-based identities controlled by keys in
  * the keystore.
+ *
+ * IdentityProvider is initialized asynchronously, so use
+ * IdentityProvider.initialize(...), not new IdentityProvider(...).
  */
 export class IdentityProvider extends ProviderEngine {
   // TODO: It would be nice to keep synthetic identities completely separate
@@ -67,11 +61,9 @@ export class IdentityProvider extends ProviderEngine {
 
     this.initializedPromise = keystoreLib.deriveStoreKey(state.passwordProvider)
       .then((storeKey) => {
-        keystoreLib.ensureHasAddress(state.keystore, storeKey);
-        const identities = mergeIdentitySources(state.identities, state.keystore);
         this.substore.store.dispatch({
-          type: 'UPDATE_IDENTITIES',
-          identities,
+          type: 'UPDATE_KEYSTORE',
+          keystore: keystoreLib.ensureHasAddress(state.keystore, storeKey),
         });
       })
       .then(() => this);
@@ -80,6 +72,11 @@ export class IdentityProvider extends ProviderEngine {
     this.addProvider(new Web3Subprovider(state.web3Provider));
   }
 
+  /**
+   * Initializes an IdentityProvider asynchronously.
+   *
+   * @return {Promise<IdentityProvider>}
+   */
   static initialize(substoreCreator: SubstoreCreator) {
     const provider = new IdentityProvider(substoreCreator);
     return provider.initializedPromise;

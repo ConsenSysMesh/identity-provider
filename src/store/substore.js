@@ -1,10 +1,8 @@
 import _ from 'lodash';
 import {createStore} from 'redux';
-import {createReducer} from 'redux-tcomb';
 import t from 'tcomb';
-import Action from './action-type';
-import {State} from './state';
-
+import * as reducers from './reducers';
+import {PartialState, State} from './state';
 
 /**
  * An application store from which the library state can be derived using
@@ -29,12 +27,13 @@ Substore.prototype.getState = function () {
  * a store for use within the library for applications that don't use Redux.
  */
 export const Substate = t.struct({
-  state: State,
+  state: PartialState,
 }, 'Substate');
 
 Substate.prototype.getSubstore = function () {
-  const reducer = createReducer(this.state, Action, State);
-  const store = createStore(reducer, this.state);
+  const initialState = PartialState(this.state).toState();
+  const reducer = reducers.create(initialState);
+  const store = createStore(reducer, initialState);
   return Substore({store, selector: _.identity});
 };
 

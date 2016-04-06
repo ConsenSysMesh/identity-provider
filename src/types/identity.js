@@ -4,12 +4,12 @@ import utils from 'ethereumjs-util';
 import t from 'tcomb';
 import {Address, Identity} from './base';
 import {State} from '../store';
-import * as keystoreLib from '../keystore';
+import {deserialize} from '../keystore';
 
 export const KeystoreIdentity = Identity.extend({}, 'KeystoreIdentity');
 
 KeystoreIdentity.prototype.signTransaction = function (txParams, state, callback) {
-  const keystore = keystoreLib.constructFromState(state);
+  const keystore = deserialize(state.keystore);
   keystore.passwordProvider = state.passwordProvider;
   keystore.signTransaction(txParams, callback);
 };

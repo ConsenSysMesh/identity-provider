@@ -1,9 +1,15 @@
-import lightwallet from 'eth-lightwallet';
 import Promise from 'bluebird';
+import lightwallet from 'eth-lightwallet';
+import _ from 'lodash';
 
 
-export function constructFromState(state) {
-  const keystoreString = JSON.stringify(state.keystore);
+export function serialize(keystoreObj) {
+  const keystoreString = keystoreObj.serialize();
+  return JSON.parse(keystoreString);
+}
+
+export function deserialize(keystoreState) {
+  const keystoreString = JSON.stringify(keystoreState);
   return lightwallet.keystore.deserialize(keystoreString);
 }
 
@@ -23,11 +29,12 @@ export function deriveStoreKey(passwordProvider) {
  * check for key references. HD token wallets constrain this state space using
  * per-token HD paths (https://github.com/ethereum/EIPs/issues/85).
  *
- * @returns {Promise<KeyStore>}
+ * @returns {Promise<SerializedKeystore>}
  */
 export function restoreFromSeed(seed, passwordProvider) {
   return deriveStoreKey(passwordProvider)
-    .then(storeKey => new lightwallet.keystore(seed, storeKey));
+    .then(storeKey => new lightwallet.keystore(seed, storeKey))
+    .then(serialize);
 }
 
 /**
@@ -40,11 +47,11 @@ export function create(passwordProvider, extraEntropy) {
   return restoreFromSeed(seed, passwordProvider);
 }
 
-function bestKeystorePath(keystore) {
+export function bestKeyring(keystore, defaultHdPath) {
   const hdPaths = Object.keys(keystore.ksData);
   let primaryPath;
-  if (hdPaths.indexOf(keystore.defaultHdPathString) !== -1) {
-    primaryPath = keystore.defaultHdPathString;
+  if (hdPaths.indexOf(defaultHdPath) !== -1) {
+    primaryPath = defaultHdPath;
   } else {
     hdPaths.sort();
     primaryPath = hdPaths[0];
@@ -52,16 +59,20 @@ function bestKeystorePath(keystore) {
 
   return {
     hdPath: primaryPath,
-    addresses: keystore.ksData[primaryPath].addresses,
+    addresses: _.map(
+      keystore.ksData[primaryPath].addresses,
+      (address) => `0x${address}`),
   };
 }
 
 /**
  * If the keystore has no addresses generated, generate one.
  */
-export function ensureHasAddress(keystore, storeKey) {
-  const pathInfo = bestKeystorePath(keystore);
-  if (pathInfo.addresses.length === 0) {
-    keystore.generateNewAddress(storeKey, 1, pathInfo.hdPath);
+export function ensureHasAddress(keystoreState, storeKey) {
+  const keystore = deserialize(keystoreState);
+  const keyring = bestKeyring(keystore);
+  if (keyring.addresses.length === 0) {
+    keystore.generateNewAddress(storeKey, 1, keyring.hdPath);
   }
+  return serialize(keystore);
 }
