@@ -2,19 +2,21 @@ import Promise from 'bluebird';
 import _ from 'lodash';
 import Web3 from 'web3';
 import identity from '.';
-import {newContractHooks, txDefaults} from './lib/transactions';
+import * as contracts from './contracts';
+import {newContractHooks} from './lib/transactions';
 
 
-export function deployProxyContract(config) {
-  const ProxyABI = config.web3.eth.contract(config.contracts.Proxy.abi);
-  const hooks = newContractHooks();
-  ProxyABI.new(
-    _.merge({
-      data: config.contracts.Proxy.binary,
-    }, txDefaults(config)),
-    hooks.callback);
+export function deployProxyContract(state, from, provider) {
+  const web3 = new Web3(provider);
+  const ProxyABI = web3.eth.contract(contracts.Proxy.abi);
+  const {callback, onContractAddress} = newContractHooks();
+  const txParams = _.merge({
+    from,
+    data: contracts.Proxy.binary,
+  }, state.transactionDefaults);
+  ProxyABI.new(txParams, callback);
 
-  return hooks.onContractAddress;
+  return onContractAddress;
 }
 
 /**
@@ -22,13 +24,13 @@ export function deployProxyContract(config) {
  *
  * @return {Promise<SenderIdentity>}
  */
-export function createContractIdentity(config) {
-  return deployProxyContract(config).then((contract) => {
+export function createContractIdentity(state, from, provider) {
+  return deployProxyContract(state, from, provider).then((contract) => {
     return identity.types.SenderIdentity({
       address: contract.address,
       methodName: 'sender',
       methodVersion: '1',
-      key: config.account,
+      key: from,
     });
   });
 }

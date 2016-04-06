@@ -1,12 +1,10 @@
-import Web3 from 'web3';
 import ProviderEngine from 'web3-provider-engine';
 import HookedWalletSubprovider from 'web3-provider-engine/subproviders/hooked-wallet';
 import Web3Subprovider from 'web3-provider-engine/subproviders/web3';
 import * as actions from './actions';
-import * as configLib from './config';
 import * as keystoreLib from './keystore';
 import {SubstoreCreator} from './store';
-import {Identity, Transactable} from './types';
+import {Transactable} from './types';
 
 
 export class IdentityWalletSubprovider extends HookedWalletSubprovider {
@@ -63,7 +61,7 @@ export class IdentityProvider extends ProviderEngine {
       .then((storeKey) => {
         this.substore.store.dispatch({
           type: 'UPDATE_KEYSTORE',
-          keystore: keystoreLib.ensureHasAddress(state.keystore, storeKey),
+          keystore: keystoreLib.ensureHasAddress(state, storeKey),
         });
       })
       .then(() => this);
@@ -93,11 +91,7 @@ export class IdentityProvider extends ProviderEngine {
       sender = from;
     }
 
-    const txConfig = Object.assign({
-      account: sender,
-      web3: new Web3(this),
-    }, configLib.defaultConfig);
-    return actions.createContractIdentity(txConfig)
+    return actions.createContractIdentity(this.substore.getState(), sender, this)
       .then((newIdentity) => {
         // Add the new identity to the beginning of the array to select it.
         const identities = [newIdentity].concat(this.substore.getState().identities);

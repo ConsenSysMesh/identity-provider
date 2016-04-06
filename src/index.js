@@ -1,5 +1,4 @@
 import * as actions from './actions';
-import * as config from './config';
 import * as contracts from './contracts';
 import * as keystore from './keystore';
 import * as provider from './provider';
@@ -21,4 +20,4 @@ Set balance
 
  */
 
-export default {actions, config, contracts, keystore, provider, types};
+export default {actions, contracts, keystore, provider, types};

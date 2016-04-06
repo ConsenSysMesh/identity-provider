@@ -68,9 +68,9 @@ export function bestKeyring(keystore, defaultHdPath) {
 /**
  * If the keystore has no addresses generated, generate one.
  */
-export function ensureHasAddress(keystoreState, storeKey) {
-  const keystore = deserialize(keystoreState);
-  const keyring = bestKeyring(keystore);
+export function ensureHasAddress(state, storeKey) {
+  const keystore = deserialize(state.keystore);
+  const keyring = bestKeyring(state.keystore, state.defaultHdPath);
   if (keyring.addresses.length === 0) {
     keystore.generateNewAddress(storeKey, 1, keyring.hdPath);
   }

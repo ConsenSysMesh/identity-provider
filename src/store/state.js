@@ -10,10 +10,17 @@ export const State = t.struct({
   identities: t.list(t.Any),
   keystore: t.Any,
   defaultHdPath: t.String,
+  transactionDefaults: t.struct({
+    gas: t.Any,
+    gasPrice: t.maybe(t.Any),
+  }),
 }, 'State');
 
 export const stateDefaults = {
   defaultHdPath: "m/0'/0'/0'",
+  transactionDefaults: {
+    gas: 3000000,
+  },
 };
 
 export const PartialState = t.struct({
@@ -22,10 +29,11 @@ export const PartialState = t.struct({
   identities: t.list(t.Any),
   keystore: t.Any,
   defaultHdPath: t.maybe(t.String),
+  defaults: t.maybe(t.Any),
 }, 'PartialState');
 
 PartialState.prototype.toState = function () {
-  return State(Object.assign({}, stateDefaults, _.omitBy(this, _.isNil)));
+  return State(_.merge({}, stateDefaults, _.omitBy(this, _.isNil)));
 };
 
 State.prototype.identityForAddress = function (address) {

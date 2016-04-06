@@ -1,6 +1,4 @@
-import BigNumber from 'bignumber.js';
 import Web3 from 'web3';
-import {promiseCallback} from './callbacks';
 
 
 function deconstructedPromise() {
@@ -36,52 +34,6 @@ export function waitForReceipt(txhash, web3Provider) {
   const filter = new Web3(web3Provider).eth.filter('latest');
   filter.watch(receiptChecker(txhash, filter, web3Provider, resolve));
   return promise;
-}
-
-export function isResultZero(result) {
-  return result === '0x' || new BigNumber(result, 16).eq(0);
-}
-
-export function logOnFailure(logTag, successTest = res => !isResultZero(res)) {
-  return (simulatedResult) => {
-    if (!successTest(simulatedResult)) {
-      console.error(`${logTag}: The simulated result (${simulatedResult}) might indicate an error.`);
-    }
-    return simulatedResult;
-  };
-}
-
-export function errorOnFailure(logTag, successTest = res => !isResultZero(res)) {
-  return (simulatedResult) => {
-    if (!successTest(simulatedResult)) {
-      throw new Error(`${logTag}: Simulated transaction result was unsuccessful.`);
-    }
-    return simulatedResult;
-  };
-}
-
-export function callAndSendTransaction(contractFunction, args, predictSuccess = logOnFailure('')) {
-  return new Promise((resolve, reject) => {
-    const callArgs = args.concat(promiseCallback(resolve, reject));
-    contractFunction.call.apply(contractFunction, callArgs);
-  })
-  .then(predictSuccess)
-  .then((simulatedResult) => {
-    return new Promise((resolve, reject) => {
-      const sendArgs = args.concat(promiseCallback(resolve, reject));
-      contractFunction.sendTransaction.apply(contractFunction, sendArgs);
-    }).then((txhash) => {
-      return {txhash: txhash, simulated_result: simulatedResult};
-    });
-  });
-}
-
-export function txDefaults(config) {
-  return {
-    from: config.account,
-    gas: config.defaultGas,
-    gasPrice: config.defaultGasPrice,
-  };
 }
 
 /**
