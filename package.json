@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "description": "",
   "scripts": {
+    "compile": "babel -d dist/ src/",
+    "prepublish": "npm run compile",
     "lint": "eslint src"
   },
   "author": "Niran Babalola <niran.babalola@consensys.net>",
@@ -13,19 +15,17 @@
     "babel-preset-es2015": "^6.0.15",
     "babel-preset-react": "^6.0.15",
     "babel-preset-stage-0": "^6.0.15",
+    "bignumber.js": "^2.3.0",
     "bluebird": "^3.3.4",
     "eslint": "^1.10.3",
     "eslint-config-airbnb": "^6.1.0",
-    "eslint-plugin-react": "^3.16.1",
-    "webpack": "^1.12.2"
+    "eslint-plugin-react": "^3.16.1"
   },
   "dependencies": {
-    "bignumber.js": "^2.3.0",
     "bluebird": "^3.3.4",
     "bn.js": "^4.11.1",
     "eth-lightwallet": "^2.2.5",
     "ethereumjs-abi": "^0.5.0",
-    "ethereumjs-tx": "^1.1.1",
     "ethereumjs-util": "^4.3.0",
     "redux-tcomb": "^0.1.6",
     "web3": "^0.15.3",
