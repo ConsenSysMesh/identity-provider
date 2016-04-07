@@ -1,13 +1,18 @@
 {
   "name": "identity-provider",
   "version": "0.1.0",
-  "description": "",
+  "description": "A Web3 Provider for contract-based identities.",
+  "main": "dist/index.js",
   "scripts": {
     "compile": "babel -d dist/ src/",
     "prepublish": "npm run compile",
     "lint": "eslint src"
   },
   "author": "Niran Babalola <niran.babalola@consensys.net>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ConsenSys/identity-provider.git"
+  },
   "devDependencies": {
     "babel-core": "^6.0.20",
     "babel-eslint": "^4.1.3",
