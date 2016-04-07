@@ -46,7 +46,7 @@ State.prototype.identityForAddress = function (address) {
 };
 
 State.prototype.getKeyIdentity = function () {
-  const keyring = keystoreLib.bestKeyring(this.keystore);
+  const keyring = keystoreLib.bestKeyring(this.keystore, this.defaultHdPath);
   const address = keyring.addresses[0];
   return KeystoreIdentity({address});
 };

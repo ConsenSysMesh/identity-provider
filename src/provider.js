@@ -19,7 +19,7 @@ export class IdentityWalletSubprovider extends HookedWalletSubprovider {
       getAccounts(callback) {
         const state = substore.getState();
         const identityAccounts = state.identities.map(id => id.address);
-        const keyring = keystoreLib.bestKeyring(state.keystore);
+        const keyring = keystoreLib.bestKeyring(state.keystore, state.defaultHdPath);
         callback(null, identityAccounts.concat(keyring.addresses));
       },
 
