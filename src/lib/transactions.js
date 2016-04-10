@@ -1,5 +1,45 @@
+import t from 'tcomb';
 import Web3 from 'web3';
 
+
+/**
+ * A transaction-dependent computation. By linking handleTransact to the
+ * transaction data itself, clients can always simulate the transaction to
+ * check the gas costs or return value that the arbitrary computation depends on.
+ */
+export const Transaction = t.struct({
+  options: t.Object,
+  expectedGas: t.maybe(t.Number),
+  handleTransact: t.maybe(t.Function),
+});
+
+/**
+ * Performs the transaction-dependent computation defined in handleTransact. If
+ * handleTransact was not provided, the transaction is sent and its hash is
+ * returned in a Promise.
+ */
+Transaction.prototype.transact = function (provider) {
+  if (this.handleTransact != null) {
+    return this.handleTransact(provider);
+  }
+
+  const web3 = new Web3(provider);
+  const sendTransaction = Promise.promisify(web3.eth.sendTransaction);
+  return sendTransaction(this.options);
+};
+
+Transaction.prototype.estimateGas = function (provider) {
+  const web3 = new Web3(provider);
+  const estimateGas = Promise.promisify(web3.eth.estimateGas);
+  return estimateGas(this.options);
+};
+
+Transaction.prototype.getQuickestGasEstimate = function (provider) {
+  if (this.expectedGas != null) {
+    return Promise.resolve(this.expectedGas);
+  }
+  return this.estimateGas(provider);
+};
 
 function deconstructedPromise() {
   const parts = {};

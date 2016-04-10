@@ -1,7 +1,6 @@
 import ProviderEngine from 'web3-provider-engine';
 import HookedWalletSubprovider from 'web3-provider-engine/subproviders/hooked-wallet';
 import Web3Subprovider from 'web3-provider-engine/subproviders/web3';
-import * as actions from './actions';
 import * as keystoreLib from './keystore';
 import {SubstoreCreator} from './store';
 import {Transactable} from './types';
@@ -78,28 +77,5 @@ export class IdentityProvider extends ProviderEngine {
   static initialize(substoreCreator: SubstoreCreator) {
     const provider = new IdentityProvider(substoreCreator);
     return provider.initializedPromise;
-  }
-
-  /**
-   * Create a contract identity and add it to the state.
-   */
-  createContractIdentity(from) {
-    let sender;
-    if (from == null) {
-      sender = this.substore.getState().getKeyIdentity().address;
-    } else {
-      sender = from;
-    }
-
-    return actions.createContractIdentity(this.substore.getState(), sender, this)
-      .then((newIdentity) => {
-        // Add the new identity to the beginning of the array to select it.
-        const identities = [newIdentity].concat(this.substore.getState().identities);
-        this.substore.store.dispatch({
-          type: 'UPDATE_IDENTITIES',
-          identities,
-        });
-        return newIdentity;
-      });
   }
 }

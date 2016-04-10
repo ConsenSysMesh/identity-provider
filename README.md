@@ -39,7 +39,7 @@ providerPromise.then((provider) => {
   const state = provider.substore.getState();
   const keyIdentity = state.getKeyIdentity(); // Add funds to keyIdentity.address.
 
-  provider.createContractIdentity()
+  identity.actions.addNewContractIdentity(provider.substore).transact(provider)
     .then((contractIdentity) => {
       // Now you have a contract identity. contractIdentity.address can be passed
       // as the `from` parameter in web3 transaction objects, and identity-provider

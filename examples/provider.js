@@ -29,7 +29,7 @@ providerPromise.then((provider) => {
     .then((txhash) => waitForReceipt(txhash, httpProvider))
     .then(() => {
       provider.start();
-      provider.createContractIdentity()
+      identity.actions.addNewContractIdentity(provider.substore).transact(provider)
         .then((contractIdentity) => {
           console.log(provider.substore.getState().identities);
           // Send funds to the new identity.

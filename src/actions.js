@@ -3,20 +3,27 @@ import _ from 'lodash';
 import Web3 from 'web3';
 import identity from '.';
 import * as contracts from './contracts';
-import {newContractHooks} from './lib/transactions';
+import {actionCreators} from './store';
+import {newContractHooks, Transaction} from './lib/transactions';
 
 
-export function deployProxyContract(state, from, provider) {
-  const web3 = new Web3(provider);
-  const ProxyABI = web3.eth.contract(contracts.Proxy.abi);
-  const {callback, onContractAddress} = newContractHooks();
-  const txParams = _.merge({
+export function deployProxyContract(state, from) {
+  const options = _.merge({
     from,
     data: contracts.Proxy.binary,
   }, state.transactionDefaults);
-  ProxyABI.new(txParams, callback);
 
-  return onContractAddress;
+  return Transaction({
+    options,
+    expectedGas: 188561,
+    handleTransact(provider) {
+      const web3 = new Web3(provider);
+      const ProxyABI = web3.eth.contract(contracts.Proxy.abi);
+      const {callback, onContractAddress} = newContractHooks();
+      ProxyABI.new(this.options, callback);
+      return onContractAddress;
+    },
+  });
 }
 
 /**
@@ -24,14 +31,47 @@ export function deployProxyContract(state, from, provider) {
  *
  * @return {Promise<SenderIdentity>}
  */
-export function createContractIdentity(state, from, provider) {
-  return deployProxyContract(state, from, provider).then((contract) => {
-    return identity.types.SenderIdentity({
-      address: contract.address,
-      methodName: 'sender',
-      methodVersion: '1',
-      key: from,
-    });
+export function createContractIdentity(state, from) {
+  const deployTx = deployProxyContract(state, from);
+  return Transaction({
+    ...deployTx,
+    handleTransact(provider) {
+      return deployTx.transact(provider)
+        .then((contract) => {
+          return identity.types.SenderIdentity({
+            address: contract.address,
+            methodName: 'sender',
+            methodVersion: '1',
+            key: from,
+          });
+        });
+    },
+  });
+}
+
+
+/**
+ * Create a contract identity and add it to the state.
+ */
+export function addNewContractIdentity(substore, from) {
+  let sender;
+  if (from == null) {
+    sender = substore.getState().getKeyIdentity().address;
+  } else {
+    sender = from;
+  }
+
+  const createTx = createContractIdentity(substore.getState(), sender);
+  return Transaction({
+    ...createTx,
+    handleTransact(provider) {
+      return createTx.transact(provider)
+        .then((newIdentity) => {
+          substore.store.dispatch(
+            actionCreators.addIdentity(substore.getState(), newIdentity));
+          return newIdentity;
+        });
+    },
   });
 }
 
