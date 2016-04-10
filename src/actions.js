@@ -68,7 +68,7 @@ export function addNewContractIdentity(substore, from) {
       return createTx.transact(provider)
         .then((newIdentity) => {
           substore.store.dispatch(
-            actionCreators.addIdentity(substore.getState(), newIdentity));
+            actionCreators.addIdentity(newIdentity));
           return newIdentity;
         });
     },

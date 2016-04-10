@@ -1,8 +1,6 @@
-export function addIdentity(state, identity) {
-  // Add the new identity to the beginning of the array to select it.
-  const identities = [identity].concat(state.identities);
+export function addIdentity(identity) {
   return {
-    type: 'UPDATE_IDENTITIES',
-    identities,
+    type: 'ADD_IDENTITY',
+    identity,
   };
 }
