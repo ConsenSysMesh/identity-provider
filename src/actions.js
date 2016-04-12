@@ -7,11 +7,11 @@ import {actionCreators} from './store';
 import {newContractHooks, Transaction} from './lib/transactions';
 
 
-export function deployProxyContract(state, from) {
+export function deployProxyContract(from, {transactionDefaults}) {
   const options = _.merge({
     from,
     data: contracts.Proxy.binary,
-  }, state.transactionDefaults);
+  }, transactionDefaults);
 
   return Transaction({
     options,
@@ -29,29 +29,25 @@ export function deployProxyContract(state, from) {
 /**
  * Creates a SenderIdentity owned by the current account.
  *
- * @return {Promise<SenderIdentity>}
+ * @return {Transaction}
  */
-export function createContractIdentity(state, from) {
-  const deployTx = deployProxyContract(state, from);
-  return Transaction({
-    ...deployTx,
-    handleTransact(provider) {
-      return deployTx.transact(provider)
-        .then((contract) => {
-          return identity.types.SenderIdentity({
-            address: contract.address,
-            methodName: 'sender',
-            methodVersion: '1',
-            key: from,
-          });
-        });
-    },
-  });
+export function createContractIdentity(from, {transactionDefaults}) {
+  return deployProxyContract(from, {transactionDefaults})
+    .map((contract) => {
+      return identity.types.SenderIdentity({
+        address: contract.address,
+        methodName: 'sender',
+        methodVersion: '1',
+        key: from,
+      });
+    });
 }
 
 
 /**
  * Create a contract identity and add it to the state.
+ *
+ * @return {Transaction}
  */
 export function addNewContractIdentity(substore, from) {
   let sender;
@@ -61,18 +57,12 @@ export function addNewContractIdentity(substore, from) {
     sender = from;
   }
 
-  const createTx = createContractIdentity(substore.getState(), sender);
-  return Transaction({
-    ...createTx,
-    handleTransact(provider) {
-      return createTx.transact(provider)
-        .then((newIdentity) => {
-          substore.store.dispatch(
-            actionCreators.addIdentity(newIdentity));
-          return newIdentity;
-        });
-    },
-  });
+  return createContractIdentity(sender, substore.getState())
+    .map((newIdentity) => {
+      substore.store.dispatch(
+        actionCreators.addIdentity(newIdentity));
+      return newIdentity;
+    });
 }
 
 /**
