@@ -1,45 +1,83 @@
+import BigNumber from 'bignumber.js';
 import t from 'tcomb';
 import Web3 from 'web3';
+import {Identity} from '../types';
 
 
 /**
- * A transaction-dependent computation. By linking handleTransact to the
- * transaction data itself, clients can always simulate the transaction to
- * check the gas costs or return value that the arbitrary computation depends on.
+ * A transaction-dependent computation. Clients can compose operations on the
+ * result of the transaction, but can always simulate the transaction to
+ * check the gas costs or return value of the dependent transaction.
+ *
+ * This approach is intended for libraries that want to provide clients with
+ * promises that resolve to a useful value.
  */
 export const Transaction = t.struct({
   options: t.Object,
   expectedGas: t.maybe(t.Number),
+  // handleTransact is typically passed via compose unless the transaction
+  // logic itself is being overridden.
   handleTransact: t.maybe(t.Function),
 });
 
-/**
- * Performs the transaction-dependent computation defined in handleTransact. If
- * handleTransact was not provided, the transaction is sent and its hash is
- * returned in a Promise.
- */
-Transaction.prototype.transact = function (provider) {
-  if (this.handleTransact != null) {
-    return this.handleTransact(provider);
-  }
+Object.assign(Transaction.prototype, {
+  /**
+   * Performs the transaction-dependent computation defined in handleTransact. If
+   * handleTransact was not provided, the transaction is sent and its hash is
+   * returned in a Promise.
+   */
+  transact(provider) {
+    if (this.handleTransact != null) {
+      return this.handleTransact(provider);
+    }
 
-  const web3 = new Web3(provider);
-  const sendTransaction = Promise.promisify(web3.eth.sendTransaction);
-  return sendTransaction(this.options);
-};
+    const web3 = new Web3(provider);
+    const sendTransaction = Promise.promisify(web3.eth.sendTransaction);
+    return sendTransaction(this.options);
+  },
 
-Transaction.prototype.estimateGas = function (provider) {
-  const web3 = new Web3(provider);
-  const estimateGas = Promise.promisify(web3.eth.estimateGas);
-  return estimateGas(this.options);
-};
+  /**
+   * Create a new Transaction that operates on this Transaction's result using
+   * the provided function. Its transact() method will return a Promise that
+   * resolves to the result of the provided function.
+   */
+  map(fn) {
+    const self = this;
+    return Transaction({
+      ...self,
+      handleTransact(provider) {
+        return self.transact(provider).then(fn);
+      },
+    });
+  },
 
-Transaction.prototype.getQuickestGasEstimate = function (provider) {
-  if (this.expectedGas != null) {
-    return Promise.resolve(this.expectedGas);
-  }
-  return this.estimateGas(provider);
-};
+  estimateGas(provider) {
+    const web3 = new Web3(provider);
+    const estimateGas = Promise.promisify(web3.eth.estimateGas);
+    return estimateGas(this.options);
+  },
+
+  getQuickestGasEstimate(provider) {
+    if (this.expectedGas != null) {
+      return Promise.resolve(this.expectedGas);
+    }
+    return this.estimateGas(provider);
+  },
+
+  getCanAfford(provider) {
+    const identity = Identity({address: this.options.from});
+    const gasPromise = this.getQuickestGasEstimate(provider);
+    const affordabilityPromise = identity.getGasAffordability(provider);
+    return Promise.all([gasPromise, affordabilityPromise])
+      .then(([gas, [balance, gasPrice]]) => {
+        const txFee = new BigNumber(gas).mul(gasPrice);
+        if (txFee.gt(balance)) {
+          return false;
+        }
+        return true;
+      });
+  },
+});
 
 function deconstructedPromise() {
   const parts = {};
