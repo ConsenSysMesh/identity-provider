@@ -8,21 +8,20 @@ global.Promise = Promise;  // Use bluebird for better error logging during devel
 
 // Using a hardcoded password is equivalent to storing keys unencrypted.
 const passwordProvider = (callback) => callback(null, 'identity-provider');
-const seed = 'embark can decline fence confirm salute fence weird joy camp brown embrace';
 const httpProvider = new Web3.providers.HttpProvider('http://localhost:8545');
-const providerPromise = identity.keystore.restoreFromSeed(seed, passwordProvider)
-  .then((keystore) => {
-    return identity.provider.IdentityProvider.initialize({
-      state: {
-        keystore,
-        passwordProvider,
-        identities: [],
-        web3Provider: httpProvider,
-      },
-    });
-  });
 
-providerPromise.then((provider) => {
+identity.provider.IdentityProvider.initialize({
+  state: {
+    passwordProvider,
+    identities: [],
+    web3Provider: httpProvider,
+  },
+}).then((provider) => {
+  identity.keystore.deriveStoreKey(passwordProvider)
+    .then((storeKey) => {
+      const keystore = identity.keystore.deserialize(provider.substore.getState().keystore);
+      console.log('SEED:', keystore.getSeed(storeKey));
+    });
   const state = provider.substore.getState();
   const keyIdentity = state.getKeyIdentity();
   identity.actions.fundAddressFromNode(keyIdentity.address, new BigNumber('1e18'), httpProvider)

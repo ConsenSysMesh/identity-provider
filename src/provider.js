@@ -54,10 +54,25 @@ export class IdentityProvider extends ProviderEngine {
   constructor(substoreCreator: SubstoreCreator) {
     super();
     this.substore = SubstoreCreator(substoreCreator).getSubstore();
-    const state = this.substore.getState();
+    let state = this.substore.getState();
 
-    this.initializedPromise = keystoreLib.deriveStoreKey(state.passwordProvider)
+    let keystoreExists;
+    if (state.keystore == null) {
+      keystoreExists = keystoreLib.create(state.passwordProvider)
+        .then((keystore) => {
+          this.substore.store.dispatch({
+            type: 'UPDATE_KEYSTORE',
+            keystore: keystore,
+          });
+        });
+    } else {
+      keystoreExists = Promise.resolve(state.keystore);
+    }
+
+    this.initializedPromise = keystoreExists
+      .then(() => keystoreLib.deriveStoreKey(state.passwordProvider))
       .then((storeKey) => {
+        state = this.substore.getState();
         this.substore.store.dispatch({
           type: 'UPDATE_KEYSTORE',
           keystore: keystoreLib.ensureHasAddress(state, storeKey),
