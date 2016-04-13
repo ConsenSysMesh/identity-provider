@@ -2,9 +2,9 @@
   "name": "identity-provider",
   "version": "0.1.0",
   "description": "A Web3 Provider for contract-based identities.",
-  "main": "dist/index.js",
+  "main": "lib/index.js",
   "scripts": {
-    "compile": "babel -d dist/ src/",
+    "compile": "babel src -d lib",
     "prepublish": "npm run compile",
     "lint": "eslint src"
   },
