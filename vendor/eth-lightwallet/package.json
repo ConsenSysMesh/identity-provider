@@ -1,0 +1,5 @@
+{
+  "name": "eth-lightwallet",
+  "version": "2.3.1",
+  "main": "lightwallet.min.js"
+}

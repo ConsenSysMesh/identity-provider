@@ -29,7 +29,7 @@
   "dependencies": {
     "bluebird": "^3.3.4",
     "bn.js": "^4.11.1",
-    "eth-lightwallet": "^2.3.1",
+    "eth-lightwallet": "file:./vendor/eth-lightwallet",
     "ethereumjs-abi": "^0.5.0",
     "ethereumjs-util": "^4.3.0",
     "redux-tcomb": "^0.1.6",
