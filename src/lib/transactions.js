@@ -69,7 +69,7 @@ Object.assign(Transaction.prototype, {
     const gasPromise = this.getQuickestGasEstimate(provider);
     const affordabilityPromise = identity.getGasAffordability(provider);
     return Promise.all([gasPromise, affordabilityPromise])
-      .then(([gas, [balance, gasPrice]]) => {
+      .then(([gas, { balance, gasPrice }]) => {
         const txFee = new BigNumber(gas).mul(gasPrice);
         if (txFee.gt(balance)) {
           return false;

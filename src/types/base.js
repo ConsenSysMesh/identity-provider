@@ -1,3 +1,4 @@
+import Promise from 'bluebird';
 import t from 'tcomb';
 import Web3 from 'web3';
 
@@ -22,6 +23,6 @@ Identity.prototype.getGasAffordability = function (provider) {
   const web3 = new Web3(provider);
   const getBalance = Promise.promisify(web3.eth.getBalance);
   const getGasPrice = Promise.promisify(web3.eth.getGasPrice);
-  Promise.all([getBalance(this.key || this.address), getGasPrice()])
+  return Promise.all([getBalance(this.key || this.address), getGasPrice()])
     .then(([balance, gasPrice]) => ({balance, gasPrice}));
 };
