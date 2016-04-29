@@ -64,17 +64,19 @@ Object.assign(Transaction.prototype, {
     return this.estimateGas(provider);
   },
 
-  getCanAfford(provider) {
+  getAffordability(provider) {
     const identity = Identity({address: this.options.from});
     const gasPromise = this.getQuickestGasEstimate(provider);
     const affordabilityPromise = identity.getGasAffordability(provider);
     return Promise.all([gasPromise, affordabilityPromise])
-      .then(([gas, { balance, gasPrice }]) => {
+      .then(([gas, { address, balance, gasPrice }]) => {
         const txFee = new BigNumber(gas).mul(gasPrice);
+        let canAfford;
         if (txFee.gt(balance)) {
-          return false;
+          canAfford = false;
         }
-        return true;
+        canAfford = true;
+        return { gas, gasPrice, address, balance, canAfford };
       });
   },
 });

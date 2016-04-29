@@ -19,10 +19,13 @@ export const Identity = t.struct({
   address: Address,
 }, 'Identity');
 
+/**
+ * Get the balance of the key that funds transactions and the current gas price.
+ */
 Identity.prototype.getGasAffordability = function (provider) {
   const web3 = new Web3(provider);
   const getBalance = Promise.promisify(web3.eth.getBalance);
   const getGasPrice = Promise.promisify(web3.eth.getGasPrice);
   return Promise.all([getBalance(this.key || this.address), getGasPrice()])
-    .then(([balance, gasPrice]) => ({balance, gasPrice}));
+    .then(([balance, gasPrice]) => ({ address: this.key, balance, gasPrice }));
 };
