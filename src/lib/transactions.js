@@ -1,7 +1,6 @@
 import BigNumber from 'bignumber.js';
 import t from 'tcomb';
 import Web3 from 'web3';
-import {Identity} from '../types';
 
 
 /**
@@ -62,22 +61,6 @@ Object.assign(Transaction.prototype, {
       return Promise.resolve(this.expectedGas);
     }
     return this.estimateGas(provider);
-  },
-
-  getAffordability(provider) {
-    const identity = Identity({address: this.options.from});
-    const gasPromise = this.getQuickestGasEstimate(provider);
-    const affordabilityPromise = identity.getGasAffordability(provider);
-    return Promise.all([gasPromise, affordabilityPromise])
-      .then(([gas, { address, balance, gasPrice }]) => {
-        const txFee = new BigNumber(gas).mul(gasPrice);
-        let canAfford;
-        if (txFee.gt(balance)) {
-          canAfford = false;
-        }
-        canAfford = true;
-        return { gas, gasPrice, address, balance, canAfford };
-      });
   },
 });
 

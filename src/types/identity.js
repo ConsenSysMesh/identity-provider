@@ -8,11 +8,14 @@ import {deserialize} from '../keystore';
 
 export const KeystoreIdentity = Identity.extend({}, 'KeystoreIdentity');
 
-KeystoreIdentity.prototype.signTransaction = function (txParams, state, callback) {
-  const keystore = deserialize(state.keystore);
-  keystore.passwordProvider = state.passwordProvider;
-  keystore.signTransaction(txParams, callback);
-};
+Object.assign(KeystoreIdentity.prototype, {
+  signTransaction(txParams, state, callback) {
+    const keystore = deserialize(state.keystore);
+    keystore.passwordProvider = state.passwordProvider;
+    keystore.signTransaction(txParams, callback);
+  },
+});
+
 
 export const ContractIdentityMethod = t.enums({
   'sender': true,
@@ -33,36 +36,42 @@ export const ContractIdentity = Identity.extend({
   key: Address,
 }, 'ContractIdentity');
 
-ContractIdentity.prototype.signTransaction = function (txParams, state, callback) {
-  // Generate the data for the proxy contract call.
-  // FIXME: ethereumjs-abi handles 0x-prefixed numbers in master, but not in 0.5.0.
-  const forwardArgs = [
-    new BN(utils.stripHexPrefix(txParams.to), 16),
-    new BN(utils.stripHexPrefix(txParams.value), 16),
-    utils.toBuffer(txParams.data),
-  ];
-  const outerTxData = abi.rawEncode(
-    'forward', ['address', 'uint256', 'bytes'], forwardArgs);
+Object.assign(ContractIdentity.prototype, {
+  getGasAddress() {
+    return this.key;
+  },
 
-  // Insert the proxy contract call data in a new transaction sent from the
-  // specified identity.
-  const newParams = {
-    data: `0x${outerTxData.toString('hex')}`,
-    to: this.address,
-    from: this.key,
-  };
-  // If gasPrice or gasLimit were set, copy them over.
-  // TODO: It is more accurate to add the ProxyContract.forward gas cost overhead
-  // to the provided gasLimit as long as it's less than the block gas limit.
-  ['gasPrice', 'gasLimit'].forEach((param) => {
-    if (txParams[param] != null) {
-      newParams[param] = txParams[param];
-    }
-  });
+  signTransaction(txParams, state, callback) {
+    // Generate the data for the proxy contract call.
+    // FIXME: ethereumjs-abi handles 0x-prefixed numbers in master, but not in 0.5.0.
+    const forwardArgs = [
+      new BN(utils.stripHexPrefix(txParams.to), 16),
+      new BN(utils.stripHexPrefix(txParams.value), 16),
+      utils.toBuffer(txParams.data),
+    ];
+    const outerTxData = abi.rawEncode(
+      'forward', ['address', 'uint256', 'bytes'], forwardArgs);
 
-  const senderIdentity = State(state).identityForAddress(this.key);
-  Transactable(senderIdentity).signTransaction(newParams, state, callback);
-};
+    // Insert the proxy contract call data in a new transaction sent from the
+    // specified identity.
+    const newParams = {
+      data: `0x${outerTxData.toString('hex')}`,
+      to: this.address,
+      from: this.key,
+    };
+    // If gasPrice or gasLimit were set, copy them over.
+    // TODO: It is more accurate to add the ProxyContract.forward gas cost overhead
+    // to the provided gasLimit as long as it's less than the block gas limit.
+    ['gasPrice', 'gasLimit'].forEach((param) => {
+      if (txParams[param] != null) {
+        newParams[param] = txParams[param];
+      }
+    });
+
+    const senderIdentity = State(state).identityForAddress(this.key);
+    Transactable(senderIdentity).signTransaction(newParams, state, callback);
+  },
+});
 
 export const SenderIdentity = t.refinement(
   ContractIdentity,
