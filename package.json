@@ -34,7 +34,7 @@
     "ethereumjs-util": "^4.3.0",
     "redux-tcomb": "^0.1.6",
     "web3": "^0.15.3",
-    "web3-provider-engine": "^7.1.1",
+    "web3-provider-engine": "^7.6.2",
     "xmlhttprequest": "^1.8.0"
   }
 }
