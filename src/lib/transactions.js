@@ -25,14 +25,14 @@ Object.assign(Transaction.prototype, {
    * handleTransact was not provided, the transaction is sent and its hash is
    * returned in a Promise.
    */
-  transact(provider) {
+  transact(provider, overrides) {
     if (this.handleTransact != null) {
-      return this.handleTransact(provider);
+      return this.handleTransact(provider, overrides);
     }
 
     const web3 = new Web3(provider);
     const sendTransaction = Promise.promisify(web3.eth.sendTransaction);
-    return sendTransaction(this.options);
+    return sendTransaction({ ...this.options, ...(overrides || {}) });
   },
 
   /**
@@ -44,16 +44,16 @@ Object.assign(Transaction.prototype, {
     const self = this;
     return Transaction({
       ...self,
-      handleTransact(provider) {
-        return self.transact(provider).then(fn);
+      handleTransact(provider, overrides) {
+        return self.transact(provider, overrides).then(fn);
       },
     });
   },
 
   estimateGas(provider) {
     const web3 = new Web3(provider);
-    const estimateGas = Promise.promisify(web3.eth.estimateGas);
-    return estimateGas(this.options);
+    const web3EstimateGas = Promise.promisify(web3.eth.estimateGas);
+    return web3EstimateGas(this.options);
   },
 
   getQuickestGasEstimate(provider) {

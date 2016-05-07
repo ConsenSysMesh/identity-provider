@@ -16,11 +16,12 @@ export function deployProxyContract(from, {transactionDefaults}) {
   return Transaction({
     options,
     expectedGas: 188561,
-    handleTransact(provider) {
+    handleTransact(provider, overrides) {
       const web3 = new Web3(provider);
       const ProxyABI = web3.eth.contract(contracts.Proxy.abi);
       const {callback, onContractAddress} = newContractHooks();
-      ProxyABI.new(this.options, callback);
+      const mergedOptions = { ...this.options, ...(overrides || {}) };
+      ProxyABI.new(mergedOptions, callback);
       return onContractAddress;
     },
   });
