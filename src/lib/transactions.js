@@ -1,4 +1,5 @@
 import BigNumber from 'bignumber.js';
+import Promise from 'bluebird';
 import t from 'tcomb';
 import Web3 from 'web3';
 
@@ -39,13 +40,17 @@ Object.assign(Transaction.prototype, {
    * Create a new Transaction that operates on this Transaction's result using
    * the provided function. Its transact() method will return a Promise that
    * resolves to the result of the provided function.
+   *
+   * The provided function will receive the Web3 Provider used for the transaction
+   * as the last argument.
    */
   map(fn) {
-    const self = this;
+    const wrapped = this;
     return Transaction({
-      ...self,
+      ...wrapped,
       handleTransact(provider, overrides) {
-        return self.transact(provider, overrides).then(fn);
+        return wrapped.transact(provider, overrides)
+          .then((...args) => fn(...args, provider));
       },
     });
   },
@@ -94,9 +99,35 @@ function receiptChecker(hash, filter, web3Provider, resolve) {
 export function waitForReceipt(txhash, web3Provider) {
   console.log(`Waiting for transaction ${txhash} to be mined...`);
   const {promise, resolve} = deconstructedPromise();
+  // Start a block filter to check for receipts on each new block.
   const filter = new Web3(web3Provider).eth.filter('latest');
-  filter.watch(receiptChecker(txhash, filter, web3Provider, resolve));
+  const checkForReceipt = receiptChecker(txhash, filter, web3Provider, resolve);
+  filter.watch(checkForReceipt);
+
+  // Check for a receipt on the current block. The transaction might have been
+  // mined before the filter was created.
+  checkForReceipt();
+
   return promise;
+}
+
+export function waitForContract(Contract, txhash, web3Provider) {
+  const getCode = Promise.promisify(new Web3(web3Provider).eth.getCode);
+  return waitForReceipt(txhash, web3Provider)
+    .then((receipt) => {
+      // Contract addresses are deterministic, so web3 (supposedly) sets the
+      // contract address on the receipt even if the transaction failed. Checking
+      // for the contract code proves the transaction succeeded.
+      return getCode(receipt.contractAddress)
+        .then((code) => {
+          if (code.length > 2) {
+            return receipt;
+          }
+
+          throw new Error('Contract code was not stored, probably because it ran out of gas.');
+        });
+    })
+    .then(receipt => Contract.at(receipt.contractAddress));
 }
 
 /**
@@ -105,6 +136,10 @@ export function waitForReceipt(txhash, web3Provider) {
  * web3's Contract.new takes a callback that is called twice. It's called with
  * the transaction hash first, then is called with the new contract address
  * when it's available.
+ *
+ * NOTE: web3's Contract.new() makes it possible for onContractAddress to never
+ * get called, especially against TestRPC. You probably want to use onTxHash and
+ * waitForReceipt instead of relying on onContractAddress.
  */
 export function newContractHooks() {
   const onTxHash = deconstructedPromise();

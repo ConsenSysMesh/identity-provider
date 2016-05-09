@@ -3,27 +3,25 @@ import _ from 'lodash';
 import Web3 from 'web3';
 import identity from '.';
 import * as contracts from './contracts';
-import {actionCreators} from './store';
-import {newContractHooks, Transaction} from './lib/transactions';
+import { actionCreators } from './store';
+import { waitForContract, Transaction } from './lib/transactions';
 
 
-export function deployProxyContract(from, {transactionDefaults}) {
+export function deployProxyContract(from, { transactionDefaults }) {
   const options = _.merge({
     from,
     data: contracts.Proxy.binary,
   }, transactionDefaults);
 
+  // Since the contract constructor takes no arguments, we can use sendTransaction
+  // directly instead of using Contract.new, which is buggy.
   return Transaction({
     options,
     expectedGas: 188561,
-    handleTransact(provider, overrides) {
-      const web3 = new Web3(provider);
-      const ProxyABI = web3.eth.contract(contracts.Proxy.abi);
-      const {callback, onContractAddress} = newContractHooks();
-      const mergedOptions = { ...this.options, ...(overrides || {}) };
-      ProxyABI.new(mergedOptions, callback);
-      return onContractAddress;
-    },
+  }).map((txhash, provider) => {
+    const web3 = new Web3(provider);
+    const ProxyABI = web3.eth.contract(contracts.Proxy.abi);
+    return waitForContract(ProxyABI, txhash, provider);
   });
 }
 
@@ -32,8 +30,8 @@ export function deployProxyContract(from, {transactionDefaults}) {
  *
  * @return {Transaction}
  */
-export function createContractIdentity(from, {transactionDefaults}) {
-  return deployProxyContract(from, {transactionDefaults})
+export function createContractIdentity(from, { transactionDefaults }) {
+  return deployProxyContract(from, { transactionDefaults })
     .map((contract) => {
       return identity.types.SenderIdentity({
         address: contract.address,
