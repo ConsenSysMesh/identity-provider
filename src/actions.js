@@ -3,7 +3,7 @@ import _ from 'lodash';
 import Web3 from 'web3';
 import identity from '.';
 import * as contracts from './contracts';
-import { actionCreators } from './store';
+import { actions } from './store';
 import { waitForContract, Transaction } from './lib/transactions';
 
 
@@ -59,7 +59,7 @@ export function addNewContractIdentity(substore, from) {
   return createContractIdentity(sender, substore.getState())
     .map((newIdentity) => {
       substore.store.dispatch(
-        actionCreators.addIdentity(newIdentity));
+        actions.ADD_IDENTITY.create(newIdentity));
       return newIdentity;
     });
 }
