@@ -3,15 +3,14 @@ import _ from 'lodash';
 import Web3 from 'web3';
 import identity from '.';
 import * as contracts from './contracts';
-import { actions } from './store';
 import { waitForContract, Transaction } from './lib/transactions';
 
 
-export function deployProxyContract(from, { transactionDefaults }) {
-  const options = _.merge({
+export function deployProxyContract(from) {
+  const options = {
     from,
     data: contracts.Proxy.binary,
-  }, transactionDefaults);
+  };
 
   // Since the contract constructor takes no arguments, we can use sendTransaction
   // directly instead of using Contract.new, which is buggy.
@@ -30,8 +29,8 @@ export function deployProxyContract(from, { transactionDefaults }) {
  *
  * @return {Transaction}
  */
-export function createContractIdentity(from, { transactionDefaults }) {
-  return deployProxyContract(from, { transactionDefaults })
+export function createContractIdentity(from) {
+  return deployProxyContract(from)
     .map((contract) => {
       return identity.types.SenderIdentity({
         address: contract.address,
@@ -39,28 +38,6 @@ export function createContractIdentity(from, { transactionDefaults }) {
         methodVersion: '1',
         key: from,
       });
-    });
-}
-
-
-/**
- * Create a contract identity and add it to the state.
- *
- * @return {Transaction}
- */
-export function addNewContractIdentity(substore, from) {
-  let sender;
-  if (from == null) {
-    sender = substore.getState().getKeyIdentity().address;
-  } else {
-    sender = from;
-  }
-
-  return createContractIdentity(sender, substore.getState())
-    .map((newIdentity) => {
-      substore.store.dispatch(
-        actions.ADD_IDENTITY.create(newIdentity));
-      return newIdentity;
     });
 }
 

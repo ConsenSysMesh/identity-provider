@@ -2,19 +2,7 @@ import BN from 'bn.js';
 import abi from 'ethereumjs-abi';
 import utils from 'ethereumjs-util';
 import t from 'tcomb';
-import {Address, Identity} from './base';
-import {State} from '../store';
-import {deserialize} from '../keystore';
-
-export const KeystoreIdentity = Identity.extend({}, 'KeystoreIdentity');
-
-Object.assign(KeystoreIdentity.prototype, {
-  signTransaction(txParams, state, callback) {
-    const keystore = deserialize(state.keystore);
-    keystore.passwordProvider = state.passwordProvider;
-    keystore.signTransaction(txParams, callback);
-  },
-});
+import { Address, BaseIdentity } from './base';
 
 
 export const ContractIdentityMethod = t.enums({
@@ -30,7 +18,7 @@ export const ContractIdentityMethod = t.enums({
  * is necessary to interact with the contracts, which will almost always be dependent
  * on the ABI of the proxy and owner contracts that implement the method.
  */
-export const ContractIdentity = Identity.extend({
+export const ContractIdentity = BaseIdentity.extend({
   methodName: ContractIdentityMethod,
   methodVersion: t.String,
   key: Address,
@@ -41,7 +29,7 @@ Object.assign(ContractIdentity.prototype, {
     return this.key;
   },
 
-  signTransaction(txParams, state, callback) {
+  wrapTransaction(txParams) {
     // Generate the data for the proxy contract call.
     // FIXME: ethereumjs-abi handles 0x-prefixed numbers in master, but not in 0.5.0.
     const forwardArgs = [
@@ -68,8 +56,7 @@ Object.assign(ContractIdentity.prototype, {
       }
     });
 
-    const senderIdentity = State(state).identityForAddress(this.key);
-    Transactable(senderIdentity).signTransaction(newParams, state, callback);
+    return newParams;
   },
 });
 
@@ -79,6 +66,8 @@ export const SenderIdentity = t.refinement(
   'SenderIdentity'
 );
 
+// NOTE: Owner identities that allow any sender to submit a metatransaction
+// signed by the owner are not currently implemented.
 export const OwnerIdentity = t.refinement(
   ContractIdentity.extend({
     owner: Address,
@@ -88,18 +77,13 @@ export const OwnerIdentity = t.refinement(
 );
 
 /**
- * A union of all types where signTransaction can be called successfully.
- *
- * e.g. Transactable(identity).signTransaction(...);
+ * A union of all identity types.
  */
-export const Transactable = t.union([KeystoreIdentity, SenderIdentity], 'Transactable');
-Transactable.dispatch = function (data) {
-  if (data.methodName == null) {
-    return KeystoreIdentity;
-  }
-
+export const Identity = t.union([SenderIdentity, OwnerIdentity], 'Identity');
+Identity.dispatch = function (data) {
   const contractMethods = {
     'sender': SenderIdentity,
+    'owner.metatx': OwnerIdentity,
   };
   return contractMethods[data.methodName];
 };

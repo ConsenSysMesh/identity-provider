@@ -15,11 +15,11 @@ export const Address = t.refinement(
   'Address'
 );
 
-export const Identity = t.struct({
+export const BaseIdentity = t.struct({
   address: Address,
-}, 'Identity');
+}, 'BaseIdentity');
 
-Object.assign(Identity.prototype, {
+Object.assign(BaseIdentity.prototype, {
   /**
    * The address that pays gas for transactions sent by this identity.
    */
@@ -37,5 +37,15 @@ Object.assign(Identity.prototype, {
     const address = this.getGasAddress();
     return Promise.all([getBalance(address), getGasPrice()])
       .then(([balance, gasPrice]) => ({ address, balance, gasPrice }));
+  },
+
+  /**
+   * Wrap the transaction for a synthentic identity before passing it off to
+   * a provider that can sign it.
+   *
+   * This default implementation is a no-op for key identities.
+   */
+  wrapTransaction(txParams) {
+    return txParams;
   },
 });

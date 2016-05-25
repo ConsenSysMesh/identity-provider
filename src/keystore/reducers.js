@@ -1,6 +1,6 @@
-import {createReducer} from 'redux-tcomb';
+import { createReducer } from 'redux-tcomb';
 import Action from './action-type';
-import {State} from './state';
+import { State } from './state';
 
 
 export function create(initialState) {

@@ -1,38 +1,67 @@
+import Web3 from 'web3';
 import ProviderEngine from 'web3-provider-engine';
 import HookedWalletSubprovider from 'web3-provider-engine/subproviders/hooked-wallet';
+import SubProvider from 'web3-provider-engine/subproviders/subprovider';
 import Web3Subprovider from 'web3-provider-engine/subproviders/web3';
 import * as keystoreLib from './keystore';
-import {SubstoreCreator} from './store';
-import {Transactable} from './types';
+import { SubstoreCreator } from './store';
+import { State, Transactable } from './types';
 
 
-export class IdentityWalletSubprovider extends HookedWalletSubprovider {
-  // TODO: Move away from HookedWalletSubprovider. HookedWalletSubprovider is
-  // intended for providers that will always sign transactions internally, but
-  // IdentityProvider should allow manipulated but unsigned transactions to be
-  // passed to other subproviders. This requires another feature that would
-  // be nice: the ability to call next() inside handleRequest to allow other
-  // subproviders to handle addresses that aren't controlled by this subprovider.
-  constructor(substore) {
+export class IdentitySubprovider extends SubProvider {
+  constructor(getState) {
+    this.getState = getState;
+  }
+
+  getAccounts() {
+    const state = this.getState();
+    return state.identities.map(id => id.address);
+  }
+
+  handleRequest(payload, next, end) {
+    switch (payload.method) {
+    case 'eth_coinbase':
+      end(null, this.getAccounts()[0]);
+      return;
+
+    case 'eth_accounts':
+      end(null, this.getAccounts());
+      return;
+
+    case 'eth_sendTransaction':
+      const originalTxOptions = payload.params[0];
+      const state = State(this.getState());
+      const identity = state.identityForAddress(originalTxOptions.from);
+      const newTxOptions = Transactable(identity).wrapTransaction(originalTxOptions);
+
+      const web3 = new Web3(state.signingProvider);
+      web3.eth.sendTransaction(newTxOptions, end);
+      return;
+
+    default:
+      next();
+      return;
+    }
+  }
+}
+
+export class KeystoreSubprovider extends HookedWalletSubprovider {
+  constructor(getState) {
     super({
       getAccounts(callback) {
-        const state = substore.getState();
-        const identityAccounts = state.identities.map(id => id.address);
+        const state = this.getState();
         const keyring = keystoreLib.bestKeyring(state.keystore, state.defaultHdPath);
-        callback(null, identityAccounts.concat(keyring.addresses));
+        callback(null, keyring.addresses);
       },
 
-      approveTransaction(txParams, callback) {
-        callback(null, true);
-      },
-
-      signTransaction(fullTxParams, callback) {
-        const sender = fullTxParams.from;
-        const state = substore.getState();
-        const identity = state.identityForAddress(sender);
-        Transactable(identity).signTransaction(fullTxParams, state, callback);
+      signTransaction(txParams, callback) {
+        const state = this.getState();
+        const keystore = keystoreLib.deserialize(state.keystore);
+        keystore.passwordProvider = state.passwordProvider;
+        keystore.signTransaction(txParams, callback);
       },
     });
+    this.getState = getState;
   }
 }
 
