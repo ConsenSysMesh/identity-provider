@@ -38,18 +38,12 @@ Object.assign(NoOp.prototype, {
  * application's state, not the whole thing.
  */
 export function createLooseUnion(actions) {
-  const actionNames = Object.keys(actions);
-  if (actionNames.length === 1) {
-    // Unions can't be created with a single type.
-    return actions[actionNames[0]];
-  }
-  
-  const Action = createUnion(actions);
+  const Action = createUnion({ ...actions, __noop: NoOp });
   const strictDispatch = Action.dispatch;
 
   Action.dispatch = function (action) {
-    const isIdentityAction = actions.hasOwnProperty(action.type);
-    return isIdentityAction ? strictDispatch(action) : NoOp;
+    const isOurAction = actions.hasOwnProperty(action.type);
+    return isOurAction ? strictDispatch(action) : NoOp;
   };
 
   return Action;

@@ -35,7 +35,7 @@ identity.keystore.dispatchers.initialize(passwordProvider)
       signingProvider,
     };
     const identityReducer = identity.state.reducers.create(initialIdentityState);
-    const keystoreReducer = identity.state.reducers.create(keystoreState);
+    const keystoreReducer = identity.keystore.reducers.create(keystoreState);
 
     store = createStore(
       combineReducers({
@@ -44,7 +44,7 @@ identity.keystore.dispatchers.initialize(passwordProvider)
       })
     );
 
-    const identitySubprovider = new identity.IdentitySubprovider(store);
+    const identitySubprovider = new identity.IdentitySubprovider({ getState: () => store.getState().identity });
     const provider = new ProviderEngine();
     provider.addProvider(identitySubprovider);
     provider.addProvider(new Web3Subprovider(httpProvider));
@@ -62,14 +62,13 @@ identity.keystore.dispatchers.initialize(passwordProvider)
     const keyring = identity.keystore.utils.bestKeyring(
       state.keystore.keystore, state.keystore.defaultHdPath);
     const transactionKey = keyring.addresses[0];
-    debugger;
 
     identity.transactions.fundAddressFromNode(transactionKey, new BigNumber('1e18'), httpProvider)
       .then((txhash) => waitForReceipt(txhash, httpProvider))
       .then(() => {
         identity.transactions.createContractIdentity(transactionKey).transact(signingProvider, { gas: 3000000 })
           .then((contractIdentity) => {
-            console.log(contractIdentity);
+            store.dispatch(identity.state.actions.ADD_IDENTITY.create({ identity: contractIdentity }));
             // Send funds to the new identity.
             const web3 = new Web3(signingProvider);
             const sendTransaction = Promise.promisify(web3.eth.sendTransaction);

@@ -1,3 +1,4 @@
+import invariant from 'invariant';
 import Web3 from 'web3';
 import SubProvider from 'web3-provider-engine/subproviders/subprovider';
 import { State } from './state';
@@ -27,6 +28,8 @@ export default class IdentitySubprovider extends SubProvider {
 
     case 'eth_sendTransaction':
       const originalTxOptions = payload.params[0];
+      invariant(originalTxOptions.from != null,
+        'IdentitySubprovider transactions must have a from address.');
       const state = State(this.getState());
       const identity = state.identityForAddress(originalTxOptions.from);
       const newTxOptions = Identity(identity).wrapTransaction(originalTxOptions);

@@ -21,7 +21,6 @@ export function ensureExists(state, { dispatch }) {
 export function ensureHasAddress(state, { dispatch }) {
   return utils.deriveStoreKey(state.passwordProvider)
     .then((storeKey) => {
-      debugger;
       dispatch({
         type: 'UPDATE_KEYSTORE',
         keystore: utils.ensureHasAddress(state, storeKey),
