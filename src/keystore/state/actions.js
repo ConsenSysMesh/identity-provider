@@ -1,5 +1,5 @@
 import t from 'tcomb';
-import { ActionStruct } from '../lib/redux-tcomb-extras';
+import { ActionStruct } from '../../lib/redux-tcomb-extras';
 
 
 export const UPDATE_KEYSTORE = ActionStruct({

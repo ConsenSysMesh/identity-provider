@@ -28,7 +28,9 @@ async function initializeStore() {
   signingProvider.addProvider(new Web3Subprovider(httpProvider));
   signingProvider.start();
 
-  const identitySubprovider = new identity.IdentitySubprovider({ getState: () => store.getState().identity });
+  const identitySubprovider = new identity.IdentitySubprovider({
+    getState: () => store.getState().identity,
+  });
   const identityProvider = new ProviderEngine();
   identityProvider.addProvider(identitySubprovider);
   identityProvider.addProvider(new Web3Subprovider(httpProvider));
@@ -39,8 +41,8 @@ async function initializeStore() {
     signingProvider,
   };
   const identityReducer = identity.state.reducers.create(initialIdentityState);
-  const keystoreState = await identity.keystore.dispatchers.initialize(passwordProvider);
-  const keystoreReducer = identity.keystore.reducers.create(keystoreState);
+  const keystoreState = await identity.keystore.state.dispatchers.initialize(passwordProvider);
+  const keystoreReducer = identity.keystore.state.reducers.create(keystoreState);
 
   store = createStore(
     combineReducers({

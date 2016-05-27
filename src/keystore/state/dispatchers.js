@@ -1,7 +1,7 @@
 import { createStore } from 'redux';
 import * as reducers from './reducers';
 import { PartialState } from './state';
-import * as utils from './utils';
+import * as utils from '../utils';
 
 
 export function ensureExists(state, { dispatch }) {

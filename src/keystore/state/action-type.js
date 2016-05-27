@@ -1,4 +1,4 @@
-import { createLooseUnion } from '../lib/redux-tcomb-extras';
+import { createLooseUnion } from '../../lib/redux-tcomb-extras';
 import * as actions from './actions';
 
 
