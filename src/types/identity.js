@@ -68,14 +68,12 @@ Object.assign(ContractIdentity.prototype, {
 
   wrapTransaction(txParams) {
     // Generate the data for the proxy contract call.
-    // FIXME: ethereumjs-abi handles 0x-prefixed numbers in master, but not in 0.5.0.
-    const forwardArgs = [
-      new BN(utils.stripHexPrefix(txParams.to), 16),
-      new BN(utils.stripHexPrefix(txParams.value), 16),
+    const outerTxData = abi.simpleEncode(
+      'forward(address,uint256,bytes)',
+      txParams.to,
+      txParams.value,
       utils.toBuffer(txParams.data),
-    ];
-    const outerTxData = abi.rawEncode(
-      'forward', ['address', 'uint256', 'bytes'], forwardArgs);
+    );
 
     // Insert the proxy contract call data in a new transaction sent from the
     // specified identity.
