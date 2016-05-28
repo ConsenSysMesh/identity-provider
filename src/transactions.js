@@ -1,39 +1,41 @@
 import Promise from 'bluebird';
 import _ from 'lodash';
+import Transaction, { utils } from 'transaction-monad';
 import Web3 from 'web3';
 import identity from '.';
 import * as contracts from './contracts';
-import { waitForContract, Transaction } from './lib/transactions';
 
 
+/**
+ * Deploy a proxy contract from uport-proxy.
+ *
+ * @return {Transaction<Address>}
+ */
 export function deployProxyContract(from) {
   const options = {
     from,
     data: contracts.Proxy.binary,
   };
 
-  // Since the contract constructor takes no arguments, we can use sendTransaction
-  // directly instead of using Contract.new, which is buggy.
+  // NOTE: Transactions that deploy contracts typically require a handleTransact
+  // method. Since the contract constructor takes no arguments, we can use a
+  // plain Transaction.
   return Transaction({
     options,
     expectedGas: 188561,
-  }).map((txhash, provider) => {
-    const web3 = new Web3(provider);
-    const ProxyABI = web3.eth.contract(contracts.Proxy.abi);
-    return waitForContract(ProxyABI, txhash, provider);
-  });
+  }).map((txhash, provider) => utils.waitForContract(txhash, provider));
 }
 
 /**
  * Creates a SenderIdentity owned by the current account.
  *
- * @return {Transaction}
+ * @return {Transaction<SenderIdentity>}
  */
 export function createContractIdentity(from) {
   return deployProxyContract(from)
-    .map((contract) => {
+    .map((address) => {
       return identity.types.SenderIdentity({
-        address: contract.address,
+        address,
         methodName: 'sender',
         methodVersion: '1',
         key: from,

@@ -35,6 +35,7 @@
     "invariant": "^2.2.1",
     "redux": "^3.5.2",
     "redux-tcomb": "^0.1.6",
+    "transaction-monad": "file:../transaction-monad",
     "web3": "^0.15.3",
     "web3-provider-engine": "^7.6.2",
     "xmlhttprequest": "^1.8.0"

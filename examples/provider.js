@@ -5,11 +5,11 @@
 import BigNumber from 'bignumber.js';
 import _ from 'lodash';
 import { combineReducers, createStore } from 'redux';
+import { utils } from 'transaction-monad';
 import Web3 from 'web3';
 import ProviderEngine from 'web3-provider-engine';
 import Web3Subprovider from 'web3-provider-engine/subproviders/web3';
 import identity from '../src';
-import { waitForReceipt } from '../src/lib/transactions';
 import Promise from 'bluebird';
 global.Promise = Promise;  // Use bluebird for better error logging during development.
 
@@ -70,7 +70,7 @@ async function initializeStore() {
 
   // Fund the new transaction key.
   await identity.transactions.fundAddressFromNode(transactionKey, new BigNumber('1e18'), httpProvider)
-    .then((txhash) => waitForReceipt(txhash, httpProvider));
+    .then((txhash) => utils.waitForReceipt(txhash, httpProvider));
 
   // Create a contract identity and add it to the state.
   const contractIdentity = await identity.transactions.createContractIdentity(transactionKey)
@@ -84,7 +84,7 @@ async function initializeStore() {
     from: transactionKey,
     to: contractIdentity.address,
     value: new BigNumber('5e17'),
-  }).then((txhash) => waitForReceipt(txhash, signingProvider));
+  }).then((txhash) => utils.waitForReceipt(txhash, signingProvider));
 
   // Send funds back from the contract to the key.
   const web3ForIdentity = new Web3(identityProvider);
@@ -93,7 +93,7 @@ async function initializeStore() {
     from: contractIdentity.address,
     to: transactionKey,
     value: new BigNumber('4e17'),
-  }).then((txhash) => waitForReceipt(txhash, identityProvider));
+  }).then((txhash) => utils.waitForReceipt(txhash, identityProvider));
 
   // Check the balances for sanity.
   const getBalance = Promise.promisify(web3.eth.getBalance);
