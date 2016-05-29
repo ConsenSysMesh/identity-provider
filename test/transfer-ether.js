@@ -29,8 +29,8 @@ describe('Sending ether to and from a new identity', () => {
     transactionKey = keyring.addresses[0];
 
     // Fund the new transaction key.
-    await identity.transactions.fundAddressFromNode(transactionKey, new BigNumber('1e18'), state.providers.http)
-      .then((txhash) => utils.waitForReceipt(txhash, state.providers.http));
+    await identity.transactions.fundAddressFromNode(transactionKey, new BigNumber('1e18'), state.providers.daemon)
+      .then((txhash) => utils.waitForReceipt(txhash, state.providers.daemon));
 
     // Create a contract identity and add it to the state.
     contractIdentity = await identity.transactions.createContractIdentity(transactionKey)

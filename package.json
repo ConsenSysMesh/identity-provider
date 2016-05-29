@@ -7,7 +7,7 @@
     "compile": "babel src -d lib",
     "prepublish": "npm run compile",
     "lint": "eslint src",
-    "test": "mocha --compilers js:babel-core/register --require babel-polyfill"
+    "test": "mocha --compilers js:babel-core/register --require babel-polyfill test/*.js"
   },
   "author": "Niran Babalola <niran.babalola@consensys.net>",
   "repository": {
@@ -30,6 +30,7 @@
     "eslint-config-airbnb": "^6.1.0",
     "eslint-plugin-react": "^3.16.1",
     "ethereumjs-testrpc": "^2.0.7",
+    "minimist": "^1.2.0",
     "mocha": "^2.5.3"
   },
   "dependencies": {

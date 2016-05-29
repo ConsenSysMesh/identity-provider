@@ -1,9 +1,22 @@
+import TestRPC from 'ethereumjs-testrpc';
+import parseArgs from 'minimist';
 import { combineReducers, createStore } from 'redux';
 import Web3 from 'web3';
 import ProviderEngine from 'web3-provider-engine';
 import Web3Subprovider from 'web3-provider-engine/subproviders/web3';
 import identity from '../../src';
 
+/**
+ * Get a Web3 Provider for an Ethereum daemon. Returns TestRPC's provider by
+ * default, but any HTTP URL can be provided to the test suite with --live-daemon.
+ */
+export function getDaemonProvider() {
+  const argv = parseArgs(process.argv.slice(2));
+  if (argv['live-daemon']) {
+    return new Web3.providers.HttpProvider(argv['live-daemon']);
+  }
+  return TestRPC.provider();
+}
 
 /**
  * Creates a redux store with an identity provider and a keystore signing provider.
@@ -14,7 +27,7 @@ import identity from '../../src';
  * @return {Store}
  */
 export async function setupStoreWithKeystore(passwordProvider) {
-  const httpProvider = new Web3.providers.HttpProvider('http://localhost:8545');
+  const daemonProvider = getDaemonProvider();
 
   let store; // Declare the eventual store so it can be closed over by getState.
   const keystoreSubprovider = new identity.keystore.KeystoreSubprovider({
@@ -22,7 +35,7 @@ export async function setupStoreWithKeystore(passwordProvider) {
   });
   const signingProvider = new ProviderEngine();
   signingProvider.addProvider(keystoreSubprovider);
-  signingProvider.addProvider(new Web3Subprovider(httpProvider));
+  signingProvider.addProvider(new Web3Subprovider(daemonProvider));
   signingProvider.start();
 
   const identitySubprovider = new identity.IdentitySubprovider({
@@ -30,7 +43,7 @@ export async function setupStoreWithKeystore(passwordProvider) {
   });
   const identityProvider = new ProviderEngine();
   identityProvider.addProvider(identitySubprovider);
-  identityProvider.addProvider(new Web3Subprovider(httpProvider));
+  identityProvider.addProvider(new Web3Subprovider(daemonProvider));
   identityProvider.start();
 
   const initialIdentityState = {
@@ -48,7 +61,7 @@ export async function setupStoreWithKeystore(passwordProvider) {
       providers: () => ({
         identity: identityProvider,
         signing: signingProvider,
-        http: httpProvider,
+        daemon: daemonProvider,
       }),
     })
   );
