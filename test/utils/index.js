@@ -6,6 +6,9 @@ import ProviderEngine from 'web3-provider-engine';
 import Web3Subprovider from 'web3-provider-engine/subproviders/web3';
 import identity from '../../src';
 
+// Using a hardcoded password is equivalent to storing keys unencrypted.
+const passwordProvider = (callback) => callback(null, 'identity-provider');
+
 /**
  * Get a Web3 Provider for an Ethereum daemon. Returns TestRPC's provider by
  * default, but any HTTP URL can be provided to the test suite with --live-daemon.
@@ -26,7 +29,7 @@ export function getDaemonProvider() {
  *
  * @return {Store}
  */
-export async function setupStoreWithKeystore(passwordProvider) {
+export async function setupStoreWithKeystore() {
   const daemonProvider = getDaemonProvider();
 
   let store; // Declare the eventual store so it can be closed over by getState.

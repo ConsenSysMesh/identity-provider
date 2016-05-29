@@ -9,16 +9,13 @@ import { setupStoreWithKeystore } from './utils';
 global.Promise = Promise;  // Use bluebird for better error logging during development.
 
 
-// Using a hardcoded password is equivalent to storing keys unencrypted.
-const passwordProvider = (callback) => callback(null, 'identity-provider');
-
 describe('Sending ether to and from a new identity', () => {
   let store;
   let transactionKey;
   let contractIdentity;
 
   before(async function (done) {
-    store = await setupStoreWithKeystore(passwordProvider);
+    store = await setupStoreWithKeystore();
     const state = store.getState();
     const signingProvider = state.providers.signing;
     const keyring = identity.keystore.utils.bestKeyring(
