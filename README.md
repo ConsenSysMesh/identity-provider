@@ -17,7 +17,16 @@ maintaining relevant metadata to allow transactions to be sent as that identity.
 Example
 -------
 
-See `examples/provider.js`.
+See `test/transfer-ether.js`, which creates a contract identity and sends ether
+back and forth.
+
+Tests
+-----
+
+Run the Mocha test suite with `npm test`, which will use an in-memory TestRPC.
+The test suite can be run against an arbitrary Ethereum daemon to test against
+production codebases with `npm test -- --live-daemon http://localhost:8545`,
+where any HTTP URL can be provided as the --live-daemon argument.
 
 Future Directions
 -----------------
