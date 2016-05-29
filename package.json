@@ -1,7 +1,7 @@
 {
   "name": "identity-provider",
-  "version": "0.1.0",
-  "description": "A Web3 Provider for contract-based identities.",
+  "version": "0.2.0",
+  "description": "A Web3 Provider for interacting with identities independently from their keys.",
   "main": "lib/index.js",
   "scripts": {
     "compile": "babel src -d lib",
