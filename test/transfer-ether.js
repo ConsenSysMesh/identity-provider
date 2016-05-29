@@ -19,9 +19,6 @@ describe('Sending ether to and from a new identity', () => {
 
   before(async function (done) {
     store = await setupStoreWithKeystore(passwordProvider);
-    const storeKey = await identity.keystore.utils.deriveStoreKey(passwordProvider);
-    const keystore = identity.keystore.utils.deserialize(store.getState().signing.keystore);
-
     const state = store.getState();
     const signingProvider = state.providers.signing;
     const keyring = identity.keystore.utils.bestKeyring(
@@ -52,6 +49,25 @@ describe('Sending ether to and from a new identity', () => {
     const getBalance = Promise.promisify(web3.eth.getBalance);
     const balance = await getBalance(contractIdentity.address);
     expect(balance.eq('5e17')).to.be.true;
+    done();
+  });
+
+  it('returns some ether from the new identity', async function (done) {
+    const identityProvider = store.getState().providers.identity;
+    const web3 = new Web3(identityProvider);
+    const sendTransaction = Promise.promisify(web3.eth.sendTransaction);
+    await sendTransaction({
+      from: contractIdentity.address,
+      to: transactionKey,
+      value: new BigNumber('4e17'),
+    }).then((txhash) => utils.waitForReceipt(txhash, identityProvider));
+
+    const getBalance = Promise.promisify(web3.eth.getBalance);
+    const contractBalance = await getBalance(contractIdentity.address);
+    expect(contractBalance.eq('1e17')).to.be.true;
+    const transactionKeyBalance = await getBalance(transactionKey);
+    // The transaction key balance should be 9e17 minus gas costs.
+    expect(transactionKeyBalance.gt('8.9e17')).to.be.true;
     done();
   });
 });
