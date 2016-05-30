@@ -13,7 +13,7 @@ export function ensureExists(state, { dispatch }) {
     .then((keystore) => {
       dispatch({
         type: 'UPDATE_KEYSTORE',
-        keystore: keystore,
+        keystore,
       });
     });
 }

@@ -9,7 +9,7 @@ export const UPDATE_IDENTITIES = ActionStruct({
   identities: t.list(t.Any),
 }, 'UPDATE_IDENTITIES');
 
-UPDATE_IDENTITIES.prototype.patch = function (state) {
+UPDATE_IDENTITIES.prototype.patch = function patch(state) {
   return t.update(state, { identities: { $set: this.identities }});
 };
 
@@ -17,6 +17,6 @@ export const ADD_IDENTITY = ActionStruct({
   identity: t.Any,
 }, 'ADD_IDENTITY');
 
-ADD_IDENTITY.prototype.patch = function (state) {
+ADD_IDENTITY.prototype.patch = function patch(state) {
   return t.update(state, { identities: { $unshift: [this.identity] }});
 };

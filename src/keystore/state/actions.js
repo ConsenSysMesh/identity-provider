@@ -6,6 +6,6 @@ export const UPDATE_KEYSTORE = ActionStruct({
   keystore: t.Object,
 }, 'UPDATE_KEYSTORE');
 
-UPDATE_KEYSTORE.prototype.patch = function (state) {
+UPDATE_KEYSTORE.prototype.patch = function patch(state) {
   return t.update(state, { keystore: { $set: this.keystore }});
 };
