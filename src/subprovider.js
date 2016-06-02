@@ -32,6 +32,8 @@ export default class IdentitySubprovider extends SubProvider {
         'IdentitySubprovider transactions must have a from address.');
       const state = State(this.getState());
       const identity = state.identityForAddress(originalTxOptions.from);
+      invariant(identity != null,
+        `The transaction's from address (${originalTxOptions.from}) didn't match an identity we control.`)
       const newTxOptions = Identity(identity).wrapTransaction(originalTxOptions);
 
       const web3 = new Web3(state.signingProvider);
