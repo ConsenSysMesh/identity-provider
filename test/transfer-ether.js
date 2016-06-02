@@ -14,7 +14,7 @@ describe('Sending ether to and from a new identity', () => {
   let transactionKey;
   let contractIdentity;
 
-  before(async function (done) {
+  before(async function () {
     store = await setupStoreWithKeystore();
     const state = store.getState();
     const signingProvider = state.providers.signing;
@@ -30,10 +30,9 @@ describe('Sending ether to and from a new identity', () => {
     contractIdentity = await identity.transactions.createContractIdentity(transactionKey)
       .transact(signingProvider, { gas: 3000000 });
     store.dispatch(identity.state.actions.ADD_IDENTITY.create({ identity: contractIdentity }));
-    done();
   });
 
-  it('sends ether to the new identity', async function (done) {
+  it('sends ether to the new identity', async function () {
     const signingProvider = store.getState().providers.signing;
     const web3 = new Web3(signingProvider);
     const sendTransaction = Promise.promisify(web3.eth.sendTransaction);
@@ -46,10 +45,9 @@ describe('Sending ether to and from a new identity', () => {
     const getBalance = Promise.promisify(web3.eth.getBalance);
     const balance = await getBalance(contractIdentity.address);
     expect(balance.eq('5e17')).to.be.true;
-    done();
   });
 
-  it('returns some ether from the new identity', async function (done) {
+  it('returns some ether from the new identity', async function () {
     const identityProvider = store.getState().providers.identity;
     const web3 = new Web3(identityProvider);
     const sendTransaction = Promise.promisify(web3.eth.sendTransaction);
@@ -65,6 +63,5 @@ describe('Sending ether to and from a new identity', () => {
     const transactionKeyBalance = await getBalance(transactionKey);
     // The transaction key balance should be 9e17 minus gas costs.
     expect(transactionKeyBalance.gt('8.9e17')).to.be.true;
-    done();
   });
 });
