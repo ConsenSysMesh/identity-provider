@@ -114,8 +114,12 @@ export const OwnerIdentity = t.refinement(
 /**
  * A union of all identity types.
  */
-export const Identity = t.union([SenderIdentity, OwnerIdentity], 'Identity');
+export const Identity = t.union([BaseIdentity, SenderIdentity, OwnerIdentity], 'Identity');
 Identity.dispatch = function dispatch(data) {
+  if (data.methodName == null) {
+    return BaseIdentity;
+  }
+
   const contractMethods = {
     'sender': SenderIdentity,
     'owner.metatx': OwnerIdentity,
