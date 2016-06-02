@@ -71,7 +71,7 @@ Object.assign(ContractIdentity.prototype, {
     const outerTxData = abi.simpleEncode(
       'forward(address,uint256,bytes)',
       txParams.to,
-      txParams.value,
+      txParams.value || 0,
       utils.toBuffer(txParams.data),
     );
 
