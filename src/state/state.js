@@ -12,12 +12,3 @@ Object.assign(State.prototype, {
     return identity;
   },
 });
-
-export const Dependencies = t.struct({
-  signingProvider: t.Any, // Web3 Provider
-}, 'Dependencies');
-
-export const Environment = t.struct({
-  state: State,
-  dependencies: Dependencies,
-});

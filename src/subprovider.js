@@ -1,6 +1,7 @@
 import invariant from 'invariant';
 import Web3 from 'web3';
 import SubProvider from 'web3-provider-engine/subproviders/subprovider';
+import { Environment } from './environment';
 import { State } from './state';
 import { Identity } from './types';
 
@@ -8,7 +9,7 @@ import { Identity } from './types';
 export default class IdentitySubprovider extends SubProvider {
   constructor({ getEnvironment }) {
     super();
-    this.getEnvironment = getEnvironment;
+    this.getEnvironment = () => Environment(getEnvironment());
   }
 
   getAccounts() {
