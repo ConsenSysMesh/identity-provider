@@ -29,12 +29,25 @@ export function getDaemonProvider() {
  *
  * @return {Store}
  */
-export async function setupStoreWithKeystore() {
+export async function setupStore() {
+  const initialIdentityState = { identities: [] };
+  const identityReducer = identity.state.reducers.create(initialIdentityState);
+  const keystoreState = await identity.keystore.state.dispatchers.initialize(passwordProvider);
+  const keystoreReducer = identity.keystore.state.reducers.create(keystoreState);
+
+  return createStore(
+    combineReducers({
+      identity: identityReducer,
+      lightwallet: keystoreReducer,
+    })
+  );
+}
+
+export function getProviders(store) {
   const daemonProvider = getDaemonProvider();
 
-  let store; // Declare the eventual store so it can be closed over by getState.
   const keystoreSubprovider = new identity.keystore.KeystoreSubprovider({
-    getState: () => store.getState().signing,
+    getState: () => store.getState().lightwallet,
   });
   const signingProvider = new ProviderEngine();
   signingProvider.addProvider(keystoreSubprovider);
@@ -42,32 +55,19 @@ export async function setupStoreWithKeystore() {
   signingProvider.start();
 
   const identitySubprovider = new identity.IdentitySubprovider({
-    getState: () => store.getState().identity,
+    getEnvironment: () => ({
+      state: store.getState().identity,
+      dependencies: { signingProvider },
+    }),
   });
   const identityProvider = new ProviderEngine();
   identityProvider.addProvider(identitySubprovider);
   identityProvider.addProvider(new Web3Subprovider(daemonProvider));
   identityProvider.start();
 
-  const initialIdentityState = {
-    identities: [],
-    signingProvider,
+  return {
+    identity: identityProvider,
+    signing: signingProvider,
+    daemon: daemonProvider,
   };
-  const identityReducer = identity.state.reducers.create(initialIdentityState);
-  const keystoreState = await identity.keystore.state.dispatchers.initialize(passwordProvider);
-  const keystoreReducer = identity.keystore.state.reducers.create(keystoreState);
-
-  store = createStore(
-    combineReducers({
-      identity: identityReducer,
-      signing: keystoreReducer,
-      providers: () => ({
-        identity: identityProvider,
-        signing: signingProvider,
-        daemon: daemonProvider,
-      }),
-    })
-  );
-
-  return store;
 }

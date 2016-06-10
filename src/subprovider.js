@@ -6,13 +6,13 @@ import { Identity } from './types';
 
 
 export default class IdentitySubprovider extends SubProvider {
-  constructor({ getState }) {
+  constructor({ getEnvironment }) {
     super();
-    this.getState = getState;
+    this.getEnvironment = getEnvironment;
   }
 
   getAccounts() {
-    const state = this.getState();
+    const state = this.getEnvironment().state;
     return state.identities.map(id => id.address);
   }
 
@@ -30,13 +30,14 @@ export default class IdentitySubprovider extends SubProvider {
       const originalTxOptions = payload.params[0];
       invariant(originalTxOptions.from != null,
         'IdentitySubprovider transactions must have a from address.');
-      const state = State(this.getState());
+      const environment = this.getEnvironment();
+      const state = State(environment.state);
       const identity = state.identityForAddress(originalTxOptions.from);
       invariant(identity != null,
         `The transaction's from address (${originalTxOptions.from}) didn't match an identity we control.`)
       const newTxOptions = Identity(identity).wrapTransaction(originalTxOptions);
 
-      const web3 = new Web3(state.signingProvider);
+      const web3 = new Web3(environment.dependencies.signingProvider);
       web3.eth.sendTransaction(newTxOptions, end);
       return;
 

@@ -4,43 +4,48 @@ import { expect } from 'chai';
 import { utils } from 'transaction-monad';
 import Web3 from 'web3';
 import identity from '../src';
-import { setupStoreWithKeystore } from './utils';
+import { setupStore, getProviders } from './utils';
 
 global.Promise = Promise;  // Use bluebird for better error logging during development.
 
 
 describe('Sending ether to and from a new identity', () => {
   let store;
+  let providers;
   let transactionKey;
   let contractIdentity;
 
   before(async function () {
-    store = await setupStoreWithKeystore();
+    store = await setupStore();
+    providers = getProviders(store);
     const state = store.getState();
-    const signingProvider = state.providers.signing;
     const keyring = identity.keystore.utils.bestKeyring(
-      state.signing.keystore, state.signing.defaultHdPath);
+      state.lightwallet.keystore, state.lightwallet.defaultHdPath);
     transactionKey = keyring.addresses[0];
 
     // Fund the new transaction key.
-    await identity.transactions.fundAddressFromNode(transactionKey, new BigNumber('1e18'), state.providers.daemon)
-      .then((txhash) => utils.waitForReceipt(txhash, state.providers.daemon));
+    await identity.transactions.fundAddressFromNode(transactionKey, new BigNumber('1e18'), providers.daemon)
+      .then((txhash) => utils.waitForReceipt(txhash, providers.daemon));
 
     // Create a contract identity and add it to the state.
     contractIdentity = await identity.transactions.createContractIdentity(transactionKey)
-      .transact(signingProvider, { gas: 3000000 });
+      .transact(providers.signing, { gas: 3000000 });
     store.dispatch(identity.state.actions.ADD_IDENTITY.create({ identity: contractIdentity }));
   });
 
+  after(() => {
+    providers.signing.stop();
+    providers.identity.stop();
+  });
+
   it('sends ether to the new identity', async function () {
-    const signingProvider = store.getState().providers.signing;
-    const web3 = new Web3(signingProvider);
+    const web3 = new Web3(providers.signing);
     const sendTransaction = Promise.promisify(web3.eth.sendTransaction);
     await sendTransaction({
       from: transactionKey,
       to: contractIdentity.address,
       value: new BigNumber('5e17'),
-    }).then((txhash) => utils.waitForReceipt(txhash, signingProvider));
+    }).then((txhash) => utils.waitForReceipt(txhash, providers.signing));
 
     const getBalance = Promise.promisify(web3.eth.getBalance);
     const balance = await getBalance(contractIdentity.address);
@@ -48,14 +53,13 @@ describe('Sending ether to and from a new identity', () => {
   });
 
   it('returns some ether from the new identity', async function () {
-    const identityProvider = store.getState().providers.identity;
-    const web3 = new Web3(identityProvider);
+    const web3 = new Web3(providers.identity);
     const sendTransaction = Promise.promisify(web3.eth.sendTransaction);
     await sendTransaction({
       from: contractIdentity.address,
       to: transactionKey,
       value: new BigNumber('4e17'),
-    }).then((txhash) => utils.waitForReceipt(txhash, identityProvider));
+    }).then((txhash) => utils.waitForReceipt(txhash, providers.identity));
 
     const getBalance = Promise.promisify(web3.eth.getBalance);
     const contractBalance = await getBalance(contractIdentity.address);

@@ -4,7 +4,6 @@ import t from 'tcomb';
 
 export const State = t.struct({
   identities: t.list(t.Object),
-  signingProvider: t.Any, // Web3 Provider
 }, 'State');
 
 Object.assign(State.prototype, {
@@ -12,4 +11,13 @@ Object.assign(State.prototype, {
     const identity = _.find(this.identities, (id) => id.address === address);
     return identity;
   },
+});
+
+export const Dependencies = t.struct({
+  signingProvider: t.Any, // Web3 Provider
+}, 'Dependencies');
+
+export const Environment = t.struct({
+  state: State,
+  dependencies: Dependencies,
 });
