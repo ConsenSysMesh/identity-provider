@@ -23,7 +23,6 @@
     "babel-preset-react": "^6.0.15",
     "babel-preset-stage-0": "^6.0.15",
     "babel-register": "^6.9.0",
-    "bignumber.js": "^2.3.0",
     "bluebird": "^3.3.4",
     "chai": "^3.5.0",
     "eslint": "^2.11.0",
@@ -37,7 +36,7 @@
   },
   "dependencies": {
     "bluebird": "^3.3.4",
-    "bn.js": "^4.11.3",
+    "bignumber.js": "^2.3.0",
     "eth-lightwallet": "file:./vendor/eth-lightwallet",
     "ethereumjs-abi": "^0.6.1",
     "ethereumjs-util": "^4.4.1",

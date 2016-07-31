@@ -1,5 +1,5 @@
 import Promise from 'bluebird';
-import BN from 'bn.js';
+import BigNumber from 'bignumber.js';
 import abi from 'ethereumjs-abi';
 import utils from 'ethereumjs-util';
 import t from 'tcomb';
@@ -83,14 +83,21 @@ Object.assign(ContractIdentity.prototype, {
       from: this.key,
     };
 
-    // If gas or gasPrice were set, copy them over.
-    // TODO: It is more accurate to add the ProxyContract.forward gas cost overhead
-    // to the provided gas as long as it's less than the block gas limit.
-    ['gas', 'gasPrice'].forEach((param) => {
-      if (txParams[param] != null) {
-        newParams[param] = txParams[param];
-      }
-    });
+    if (txParams.gas != null) {
+      // The gas delta between sending a transaction normally and sending it
+      // via Proxy.forward().
+      const FORWARD_GAS = 21407;
+      // The amount of gas Solidity reserves when it makes an external call. The
+      // proxy contract makes an external call to forward the call, so it will
+      // reserve CALL_GAS after using some of FORWARD_GAS.
+      const CALL_GAS = 34050;
+      const totalGas = new BigNumber(txParams.gas).add(FORWARD_GAS).add(CALL_GAS);
+      newParams.gas = `0x${totalGas.toString(16)}`;
+    }
+
+    if (txParams.gasPrice != null) {
+      newParams.gasPrice = txParams.gasPrice;
+    }
 
     return newParams;
   },
