@@ -82,10 +82,11 @@ Object.assign(ContractIdentity.prototype, {
       to: this.address,
       from: this.key,
     };
-    // If gasPrice or gasLimit were set, copy them over.
+
+    // If gas or gasPrice were set, copy them over.
     // TODO: It is more accurate to add the ProxyContract.forward gas cost overhead
-    // to the provided gasLimit as long as it's less than the block gas limit.
-    ['gasPrice', 'gasLimit'].forEach((param) => {
+    // to the provided gas as long as it's less than the block gas limit.
+    ['gas', 'gasPrice'].forEach((param) => {
       if (txParams[param] != null) {
         newParams[param] = txParams[param];
       }
