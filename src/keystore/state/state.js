@@ -1,4 +1,6 @@
-import _ from 'lodash';
+import isNil from 'lodash/isNil';
+import merge from 'lodash/merge';
+import omitBy from 'lodash/omitBy';
 import t from 'tcomb';
 
 
@@ -21,6 +23,6 @@ export const PartialState = t.struct({
 
 Object.assign(PartialState.prototype, {
   toState() {
-    return State(_.merge({}, stateDefaults, _.omitBy(this, _.isNil)));
+    return State(merge({}, stateDefaults, omitBy(this, isNil)));
   },
 });

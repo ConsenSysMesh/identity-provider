@@ -1,5 +1,4 @@
 import Promise from 'bluebird';
-import _ from 'lodash';
 import Transaction from 'transaction-monad';
 import * as utils from 'transaction-monad/lib/utils';
 import Web3 from 'web3';

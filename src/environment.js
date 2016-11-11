@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import t from 'tcomb';
 import { State } from './state';
 

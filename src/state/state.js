@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import find from 'lodash/find';
 import t from 'tcomb';
 
 
@@ -8,7 +8,7 @@ export const State = t.struct({
 
 Object.assign(State.prototype, {
   identityForAddress(address) {
-    const identity = _.find(this.identities, (id) => id.address === address);
+    const identity = find(this.identities, (id) => id.address === address);
     return identity;
   },
 });

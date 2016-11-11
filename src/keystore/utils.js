@@ -1,6 +1,6 @@
 import Promise from 'bluebird';
 import lightwallet from 'eth-lightwallet';
-import _ from 'lodash';
+import map from 'lodash/map';
 
 
 export function serialize(keystoreObj) {
@@ -59,7 +59,7 @@ export function bestKeyring(keystore, defaultHdPath) {
 
   return {
     hdPath: primaryPath,
-    addresses: _.map(
+    addresses: map(
       keystore.ksData[primaryPath].addresses,
       (address) => `0x${address}`),
   };
