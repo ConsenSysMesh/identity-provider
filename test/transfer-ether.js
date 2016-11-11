@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js';
 import Promise from 'bluebird';
 import { expect } from 'chai';
-import { utils } from 'transaction-monad';
+import * as utils from 'transaction-monad/lib/utils';
 import Web3 from 'web3';
 import identity from '../src';
 import { setupStore, getProviders } from './utils';
